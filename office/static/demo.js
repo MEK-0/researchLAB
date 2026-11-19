@@ -2,7 +2,7 @@
 import { ingest, resetAll } from './state.js';
 
 // [önceki olaydan sonra bekleme (ms), olay, örnek token]
-const D = [
+export const DEMO_EVENTS = [
   [300, { hook_event_name: 'SessionStart', source: 'startup' }, 120],
   [1300, { hook_event_name: 'UserPromptSubmit', prompt: 'Deneme projesi başlat: iris-baseline. Logistic regression, kısa literatür, mini makale, hakem, rapor.' }, 900],
   [1800, { hook_event_name: 'PreToolUse', tool_name: 'Bash', tool_input: { command: 'cp -R workspace/_template workspace/iris-baseline' } }, 600],
@@ -48,7 +48,7 @@ function playList(list, label) {
   resetAll(); P.queue = list; P.acc = 0; P.playing = true;
   srcEl.textContent = 'Kaynak: ' + label; playBtn.textContent = 'Duraklat';
 }
-export function demo() { playList(D.map(([d, e, t]) => ({ d, e: { ...e, tokens: t, timestamp: null } })), 'demo (iris-baseline)'); }
+export function demo() { playList(DEMO_EVENTS.map(([d, e, t]) => ({ d, e: { ...e, tokens: t, timestamp: null } })), 'demo (iris-baseline)'); }
 
 // Her karede çağrılır; dt gerçek saniye
 export function tick(dt) {

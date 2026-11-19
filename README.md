@@ -49,10 +49,31 @@ researchLAB/
 │       ├── STATUS.md
 │       ├── code/  results/  literature/  paper/  reviews/
 ├── reports/                   # günlük raporlar + şablon
-├── events/                    # events.jsonl (olay günlüğü)
-└── office/                    # (gelecek) 3B pixel ofis arayüzü
+├── events/                    # events.jsonl (olay günlüğü), .token_offsets.json
+├── office/                    # canlı pixel ofis arayüzü (bkz. office/README.md)
+├── tests/                     # altyapı testleri (Python, Node, görsel)
+└── docs/DEVELOPMENT.md        # altyapı geliştirme kuralları
 ```
 
 ## Olay günlüğü
 
 `.claude/hooks/log_event.py` her hook olayında `events/events.jsonl` dosyasına bir satır ekler. Yalnızca Python standart kütüphanesini kullanır ve hiçbir koşulda Claude Code'u durdurmaz (her zaman exit 0).
+
+Her olayda agent kimliği (`agent_type`), kısaltılmış araç girdisi ve alt agent bitişinde / tur sonunda gerçek token sayısı (`tokens`) bulunur. Alan listesi: [`office/README.md`](office/README.md#olay-alanları-claudehookslog_eventpy).
+
+## Ofis arayüzü
+
+```bash
+./office/office.sh        # http://localhost:8765 — canlı ofis + iki terminal
+```
+
+Agent'ları masalarında çalışırken, Manager'ın iş dağıtmasını ve teslimleri canlı izlersiniz. Demo için `http://localhost:8765/#demo`. Ayrıntılar: [`office/README.md`](office/README.md).
+
+## Geliştirme
+
+Altyapı (ofis, sunucu, hook'lar) üzerinde çalışırken [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md) kurallarına uyulur. Testler:
+
+```bash
+python3 -m unittest discover -s tests && node --test tests/*.test.mjs && tests/visual/check.sh
+```
+
