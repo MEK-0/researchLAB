@@ -250,6 +250,8 @@ def main():
         if data.get("tool_use_id"):
             record["tool_use_id"] = data.get("tool_use_id")
         record["summary"] = _summary(data)
+        if data.get("hook_event_name") == "SessionStart" and data.get("source"):
+            record["source"] = data.get("source")
 
         # Agent kimliği (alt agent içinden tetiklenen hook'larda bulunur)
         agent = {k: data[k] for k in AGENT_ID_KEYS if data.get(k) is not None}

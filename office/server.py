@@ -4,13 +4,15 @@
   GET /         → office/index.html
   GET /events   → Server-Sent Events: events/events.jsonl'e eklenen her satır
                   "data: <tek satırlık JSON>\\n\\n" olarak (varsayılan message event'i).
-                  ?replay=N ile son N olay da baştan gönderilir (varsayılan 0).
+                  ?replay=N: son oturumun (bkz. replay_lines) en fazla son N olayı
+                  da baştan gönderilir (varsayılan 0).
 
 Yalnızca 127.0.0.1'e bağlanır. Kullanım: python3 office/server.py [--port 8765]
 """
 import argparse
 import json
 import os
+import sys
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
@@ -51,12 +53,40 @@ def sse_line(raw):
     return ("data: %s\n\n" % json.dumps(ev, ensure_ascii=False)).encode("utf-8")
 
 
-def last_lines(path, n):
+def _session_start(ev):
+    """Oturum sınırı sayılan SessionStart mı? Bağlam sıkıştırma (compact) sayılmaz."""
+    if not isinstance(ev, dict) or ev.get("hook_event_name") != "SessionStart":
+        return False
+    source = ev.get("source") or str(ev.get("summary") or "").replace("session start:", "").strip()
+    return source != "compact"
+
+
+def replay_lines(path, n):
+    """Son oturumun (sıkıştırma hariç en son SessionStart) olaylarından en fazla
+    son n tanesini döner. Yalnızca o oturumun session_id'sine ait olaylar gelir;
+    aynı anda çalışan başka oturumlar karışmaz."""
     if n <= 0 or not os.path.exists(path):
         return []
     with open(path, "rb") as f:
-        lines = f.read().splitlines()
-    return [l.decode("utf-8", "replace") for l in lines[-n:]]
+        raw = f.read().decode("utf-8", "replace").splitlines()
+    parsed = []
+    for line in raw:
+        try:
+            ev = json.loads(line)
+        except ValueError:
+            continue
+        if isinstance(ev, dict):
+            parsed.append((line, ev))
+    start = None
+    for i in range(len(parsed) - 1, -1, -1):
+        if _session_start(parsed[i][1]):
+            start = i
+            break
+    if start is None:
+        return []
+    sid = parsed[start][1].get("session_id")
+    out = [line for line, ev in parsed[start:] if ev.get("session_id") == sid]
+    return out[-n:]
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -97,9 +127,10 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Cache-Control", "no-cache")
         self.send_header("Connection", "keep-alive")
         self.end_headers()
+        self.close_connection = True
         try:
             self.wfile.write(b"retry: 2000\n\n")
-            for raw in last_lines(EVENTS, replay):
+            for raw in replay_lines(EVENTS, replay):
                 chunk = sse_line(raw)
                 if chunk:
                     self.wfile.write(chunk)
@@ -141,12 +172,22 @@ class Handler(BaseHTTPRequestHandler):
             time.sleep(POLL)
 
 
+class OfficeServer(ThreadingHTTPServer):
+    daemon_threads = True
+
+    def handle_error(self, request, client_address):
+        # İstemcinin bağlantıyı koparması (sekme kapandı, SSE yeniden bağlandı) olağandır.
+        exc = sys.exc_info()[1]
+        if isinstance(exc, (ConnectionResetError, BrokenPipeError, TimeoutError)):
+            return
+        super().handle_error(request, client_address)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--port", type=int, default=int(os.environ.get("OFFICE_PORT", 8765)))
     args = ap.parse_args()
-    srv = ThreadingHTTPServer(("127.0.0.1", args.port), Handler)
-    srv.daemon_threads = True
+    srv = OfficeServer(("127.0.0.1", args.port), Handler)
     print("researchLAB ofisi: http://localhost:%d" % args.port, flush=True)
     try:
         srv.serve_forever()
