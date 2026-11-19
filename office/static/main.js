@@ -8,7 +8,7 @@ import { P } from './scene/iso.js';
 import { feed, clearFeed, panels } from './ui/panels.js';
 import { initTerminals, isLocal } from './ui/terminals.js';
 import { connectEvents } from './api.js';
-import { demo, initDemoControls, setSource, speed, stopPlayback, tick } from './demo.js';
+import { demo, initDemoControls, speed, tick } from './demo.js';
 
 const cv = document.getElementById('cv');
 setCtx(cv.getContext('2d'));
@@ -45,17 +45,36 @@ function overlay() {
   }
 }
 
-initTerminals();
-initDemoControls();
-
-// Yerel canlı mod: office/server.py /events üzerinden SSE yayınlar.
+// Mod seçimi: #demo → demo oynatıcı; #freeze[=work] → görsel test karesi; aksi halde her zaman canlı.
+const FZ = /^#freeze(=(\w+))?$/.exec(location.hash);
+const DEMO = location.hash === '#demo';
+window.addEventListener('hashchange', () => location.reload());
 window.researchLAB = { ingest };
-const FZ = /#freeze(=(\w+))?/.exec(location.hash); // test: sabit tek kare
-if (!FZ && isLocal) {
+
+const $ = id => document.getElementById(id);
+// Test: #freeze ya da ?terms=0 iken gerçek terminallere (tmux) bağlanma
+if (!FZ && new URLSearchParams(location.search).get('terms') !== '0') initTerminals();
+
+function startLive() {
+  S.live = true; S.estimateTokens = false;
+  $('lede').textContent = "Agent'ların hook olaylarından beslenen canlı ofis. Sayfa yenilenince son oturum sessizce geri yüklenir.";
+  $('toknote').textContent = 'Token: alt agent bitince (SubagentStop) ve her tur sonunda (Stop) transcript usage alanından gerçek değer.';
+  const src = $('src');
+  if (!isLocal) { src.textContent = 'Kaynak: canlı bağlantı yok. Ofisi ./office/office.sh ile aç (http://localhost:8765) ya da demo için #demo.'; return; }
+  let es = null;
   try {
-    S.live = true;
-    connectEvents({ replay: 300, onOpen: () => { stopPlayback(); resetAll(); setSource('canlı (events.jsonl)'); }, onEvent: ingest });
-  } catch (_) { /* SSE yok */ }
+    es = connectEvents({ replay: 300, onOpen: () => { resetAll(); src.textContent = 'Kaynak: canlı (events.jsonl)'; }, onEvent: ingest });
+  } catch (_) { es = null; }
+  if (!es) { src.textContent = 'Kaynak: bu tarayıcı SSE desteklemiyor.'; return; }
+  es.addEventListener('error', () => { src.textContent = 'Kaynak: sunucuya bağlanılamıyor, yeniden deneniyor…'; });
+}
+
+function startDemo() {
+  S.live = false; S.estimateTokens = true;
+  $('demobadge').hidden = false; $('democtrl').hidden = false;
+  $('lede').innerHTML = 'Demo: iris-baseline testini taklit eden örnek olaylar oynuyor. Kendi <code>events.jsonl</code> dosyanı yükleyerek bir oturumu yeniden oynatabilirsin. Canlı ofis için adresin sonundaki <code>#demo</code>\'yu kaldır.';
+  $('toknote').textContent = 'Token değerleri demo için örnektir.';
+  initDemoControls(); demo();
 }
 
 let last = performance.now(), pt = 0;
@@ -73,4 +92,7 @@ if (FZ) {
   clock.t = 1.0;
   if (FZ[2] === 'work') KEYS.forEach(k => { AG[k].state = k === 'manager' ? 'manage' : 'working'; });
   draw(); document.documentElement.dataset.canvas = cv.toDataURL();
-} else { demo(); requestAnimationFrame(frame); }
+} else {
+  if (DEMO) startDemo(); else startLive();
+  requestAnimationFrame(frame);
+}

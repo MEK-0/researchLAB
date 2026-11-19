@@ -49,8 +49,6 @@ function playList(list, label) {
   srcEl.textContent = 'Kaynak: ' + label; playBtn.textContent = 'Duraklat';
 }
 export function demo() { playList(D.map(([d, e, t]) => ({ d, e: { ...e, tokens: t, timestamp: null } })), 'demo (iris-baseline)'); }
-export function stopPlayback() { P.queue = []; P.playing = false; }
-export function setSource(label) { srcEl.textContent = 'Kaynak: ' + label; }
 
 // Her karede çağrılır; dt gerçek saniye
 export function tick(dt) {

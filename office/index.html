@@ -41,7 +41,9 @@ button:active,.file:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var
 button:focus-visible,.file:focus-within{outline:3px solid var(--accent);outline-offset:2px}
 button.on{background:var(--ink);color:var(--panel)}
 .file input{position:absolute;opacity:0;width:1px;height:1px}
-.src{font-size:14px;color:var(--mute);margin-left:4px}
+.src{display:block;font-size:14px;color:var(--mute);margin:6px 0 0 4px}
+.badge{display:inline-block;vertical-align:middle;font:400 13px/1 "Silkscreen",monospace;padding:4px 6px 3px;background:var(--accent);color:#fff;letter-spacing:.04em}
+[hidden]{display:none!important}
 .scene{position:relative;aspect-ratio:352/250;background:#232b2f;border:3px solid #0b1514;box-shadow:6px 6px 0 rgba(0,0,0,.25);overflow:hidden}
 .scene canvas{position:absolute;inset:0;width:100%;height:100%;image-rendering:pixelated}
 #ov{position:absolute;inset:0;pointer-events:none}
@@ -81,19 +83,19 @@ button.on{background:var(--ink);color:var(--panel)}
 <div class="app">
 <div class="left">
 <header>
-  <h1>researchLAB ofisi</h1>
-  <p class="lede" id="lede">Agent'ların hook olaylarından beslenen canlı ofis. Şu an iris-baseline testini taklit eden demo verisi oynuyor. Kendi <code>events.jsonl</code> dosyanı yükleyerek gerçek bir oturumu da izleyebilirsin.</p>
-  <div class="ctrl">
+  <h1>researchLAB ofisi <span class="badge" id="demobadge" hidden>DEMO</span></h1>
+  <p class="lede" id="lede">Agent'ların hook olaylarından beslenen canlı ofis.</p>
+  <div class="ctrl" id="democtrl" hidden>
     <button id="play">Duraklat</button>
     <button data-sp="1" class="on">1x</button><button data-sp="2">2x</button><button data-sp="4">4x</button>
     <label class="file">events.jsonl yükle<input type="file" id="file" accept=".jsonl,.json,.txt"></label>
     <button id="reset">Demoyu baştan oynat</button>
-    <span class="src" id="src">Kaynak: demo (iris-baseline)</span>
   </div>
+  <span class="src" id="src">Kaynak: bağlanıyor…</span>
 </header>
   <div class="scene" id="scene"><canvas id="cv" width="352" height="250"></canvas><div id="ov"></div></div>
   <div class="side">
-    <section class="card"><h2>Ekip</h2><div id="team"></div><p class="note" id="toknote">Token değerleri demo için örnektir. Gerçek kullanımda ham transcript'lerdeki usage alanından okunacak.</p></section>
+    <section class="card"><h2>Ekip</h2><div id="team"></div><p class="note" id="toknote"></p></section>
     <section class="card"><h2>Canlı olay akışı</h2><ol id="feed"></ol></section>
     <section class="card kbc"><h2>Görev panosu</h2><div class="kb" id="kb"></div></section>
   </div>
