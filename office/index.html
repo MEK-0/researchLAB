@@ -138,7 +138,8 @@ for(const k of KEYS){
 }
 function resetChar(a){a.x=a.px=a.seat[0];a.y=a.py=a.seat[1];a.where='seat';a.q=[];a.state='idle';a.walking=false;a.walkT=0;a.face=0;a.bubUntil=0;a.tok=0;}
 let simT=0;
-function say(a,text,s){if(!text)return;a.bub.textContent=text;a.bubUntil=simT+s;}
+let quiet=false,live=false;
+function say(a,text,s){if(!text||quiet)return;a.bub.textContent=text;a.bubUntil=simT+s;}
 const push=(a,...acts)=>a.q.push(...acts);
 function walk(a,x,y){if(Math.abs(a.px-x)+Math.abs(a.py-y)<0.001)return;a.q.push({t:'walk',x,y});a.px=x;a.py=y;}
 function leave(a){if(a.where!=='seat')return;for(const p of a.out)walk(a,p[0],p[1]);a.where='hall';}
@@ -323,30 +324,34 @@ function addTok(a,ev){const u=ev.usage;let n=ev.tokens;if(n==null&&u)n=(u.input_
 const M=AG.manager;
 function delegate(s,desc){closeReviewed();const a=AG[s];
   tasks.push({id:++tid,a:s,txt:short(desc,70),st:'bekliyor'});
+  if(quiet)return;
   push(M,{t:'state',v:'manage'});leave(M);travel(M,...a.hall);
   push(M,{t:'say',text:a.name+': '+short(desc,70),s:3.2},{t:'wait',s:1.2},{t:'fn',f:()=>say(a,'Tamam, başlıyorum.',2.2)},{t:'wait',s:0.6});
   travel(M,...M.hall);enter(M);push(M,{t:'state',v:'idle'});}
-function start(s){active.add(s);const a=AG[s];push(a,{t:'state',v:'working'});setTask(s,'çalışıyor',['bekliyor']);}
+function start(s){active.add(s);const a=AG[s];if(quiet)a.state='working';else push(a,{t:'state',v:'working'});setTask(s,'çalışıyor',['bekliyor']);}
 function deliver(s,msg){active.delete(s);const a=AG[s];setTask(s,'kontrolde',['çalışıyor','bekliyor']);
+  if(quiet){a.state='idle';return;}
   push(a,{t:'state',v:'deliver'});leave(a);travel(a,...M.hall);walk(a,...M.visit);
   push(a,{t:'say',text:short(msg||'İş bitti, teslim ediyorum.',110),s:4},{t:'wait',s:2.4},{t:'fn',f:()=>{M.state='review';say(M,'Kontrol ediyorum…',2.5);}});
   walk(a,...M.hall);travel(a,...a.hall);enter(a);push(a,{t:'state',v:'idle'},{t:'fn',f:()=>{if(M.state==='review')M.state='idle';}});}
 function ingest(ev){
   if(!ev||typeof ev!=='object')return;
+  // events older than 20s (e.g. /events?replay=N after a page refresh) rebuild the board without animation
+  const ts=Date.parse(ev.timestamp);quiet=live&&!isNaN(ts)&&Date.now()-ts>20000;
   const n=ev.hook_event_name||'?',ti=ev.tool_input||{},deleg=/^(Agent|Task)$/.test(ev.tool_name||'');
-  let a=deleg?'manager':(norm(ev.agent_type||ev.agent_name||(ev.agent&&ev.agent.type))||(/ToolUse/.test(n)&&active.size===1?[...active][0]:'manager'));
+  let a=deleg?'manager':(norm(ev.agent_type||ev.agent_name||(ev.agent&&(ev.agent.agent_type||ev.agent.type)))||(/ToolUse/.test(n)&&active.size===1?[...active][0]:'manager'));
   let msg='';
   if(n==='SessionStart'){msg='Oturum açıldı';say(M,'Günaydın ekip, ofis açık.',3);}
   else if(n==='UserPromptSubmit'){msg=short(ev.prompt||ev.summary,80);say(M,'Yeni görev: '+short(ev.prompt||ev.summary,80),4.5);}
   else if(deleg&&n==='PreToolUse'){const s=norm(ti.subagent_type)||'sr';msg='→ '+AG[s].name+': '+short(ti.description||ti.prompt,60);delegate(s,ti.description||ti.prompt||'Görev');}
   else if(deleg){msg='alt agent dönüşü';}
-  else if(n==='SubagentStart'){a=norm(ev.agent_type)||'sr';msg='işe başladı';start(a);}
-  else if(n==='SubagentStop'){a=norm(ev.agent_type)||(active.size===1?[...active][0]:'sr');msg=short(ev.last_assistant_message||'bitti',80);deliver(a,ev.last_assistant_message);}
+  else if(n==='SubagentStart'){a=norm(ev.agent_type||(ev.agent&&ev.agent.agent_type))||'sr';msg='işe başladı';start(a);}
+  else if(n==='SubagentStop'){a=norm(ev.agent_type||(ev.agent&&ev.agent.agent_type))||(active.size===1?[...active][0]:'sr');msg=short(ev.last_assistant_message||'bitti',80);deliver(a,ev.last_assistant_message);}
   else if(n==='Stop'){msg='tur tamamlandı';closeReviewed();say(M,'Tur tamamlandı. Rapor hazır.',4);}
   else if(n==='Notification'){msg=short(ev.message||ev.summary,80);say(M,'Dikkat: '+msg,4);}
   else if(/ToolUse/.test(n)){const line=toolLine(ev);msg=line||short(ev.summary||ev.tool_name,80);const c=AG[a];
     if(a!=='manager'&&!active.has(a))start(a);
-    if(line)(c.q.length?push(c,{t:'say',text:line,s:2.6}):say(c,line,2.6));}
+    if(line&&!quiet)(c.q.length?push(c,{t:'say',text:line,s:2.6}):say(c,line,2.6));}
   else msg=short(ev.summary,80);
   addTok(a,ev);feed(a,ev,msg);panels();
 }
@@ -435,7 +440,7 @@ TERMS.forEach((t,i)=>{const box=document.getElementById(t.id),a=document.getElem
 
 // Local live mode: office/server serves Server-Sent Events at /events.
 window.researchLAB={ingest};
-try{if(isLocal&&window.EventSource){const es=new EventSource('/events');
+try{if(isLocal&&window.EventSource){const es=new EventSource('/events?replay=300');live=true;
   es.onopen=()=>{queue=[];playing=false;resetAll();srcEl.textContent='Kaynak: canlı (events.jsonl)';};
   es.onmessage=m=>{try{ingest(JSON.parse(m.data))}catch(_){}};}}catch(_){}
 
