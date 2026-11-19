@@ -8,6 +8,8 @@ Kurallar: yalnızca standart kütüphane; asla hata fırlatmaz; her durumda exit
 """
 import json
 import os
+import re
+import shutil
 import sys
 from datetime import datetime, timezone
 
@@ -68,6 +70,61 @@ def _project_dir():
     return os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
+def _safe(name, default="unknown"):
+    name = re.sub(r"[^A-Za-z0-9._-]+", "-", str(name or "")).strip("-.")
+    return name or default
+
+
+def _active_project(root):
+    """workspace/.active_project içindeki proje adını döner; yoksa None."""
+    try:
+        with open(os.path.join(root, "workspace", ".active_project"), encoding="utf-8") as f:
+            name = f.read().strip()
+        if name and name not in ("_template", "_unassigned") and "/" not in name and ".." not in name:
+            if os.path.isdir(os.path.join(root, "workspace", name)):
+                return name
+    except Exception:
+        pass
+    return None
+
+
+def _subagent_transcript(data):
+    """Alt agent transcript yolunu bulur. Önce agent_transcript_path,
+    boşsa <ana transcript>/subagents/agent-<agent_id>.jsonl denenir."""
+    p = data.get("agent_transcript_path")
+    if p and os.path.isfile(p):
+        return p
+    tp, aid = data.get("transcript_path"), data.get("agent_id")
+    if tp and aid:
+        base = tp[:-6] if tp.endswith(".jsonl") else tp
+        cand = os.path.join(base, "subagents", "agent-%s.jsonl" % aid)
+        if os.path.isfile(cand):
+            return cand
+    return None
+
+
+def _copy_raw_transcript(data, root):
+    """SubagentStop'ta transcript'i agent_logs/raw/ altına kopyalar.
+    Hedef yolu (veya hata bilgisini) dict olarak döner; asla fırlatmaz."""
+    try:
+        src = _subagent_transcript(data)
+        if not src:
+            return {"copied": False, "reason": "transcript yok"}
+        project = _active_project(root)
+        if project:
+            dest_dir = os.path.join(root, "workspace", project, "agent_logs", "raw")
+        else:
+            dest_dir = os.path.join(root, "workspace", "_unassigned", "raw")
+        os.makedirs(dest_dir, exist_ok=True)
+        ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
+        agent = _safe(data.get("agent_type") or data.get("agent_id"))
+        dest = os.path.join(dest_dir, "%s-%s.jsonl" % (ts, agent))
+        shutil.copyfile(src, dest)
+        return {"copied": True, "dest": os.path.relpath(dest, root), "project": project}
+    except Exception as e:
+        return {"copied": False, "reason": _short(repr(e))}
+
+
 def main():
     try:
         raw = sys.stdin.read()
@@ -112,7 +169,11 @@ def main():
             record["parse_error"] = True
             record["raw"] = data.get("raw")
 
-        events_dir = os.path.join(_project_dir(), "events")
+        root = _project_dir()
+        if data.get("hook_event_name") == "SubagentStop":
+            record["raw_transcript"] = _copy_raw_transcript(data, root)
+
+        events_dir = os.path.join(root, "events")
         os.makedirs(events_dir, exist_ok=True)
         with open(os.path.join(events_dir, "events.jsonl"), "a", encoding="utf-8") as f:
             f.write(json.dumps(record, ensure_ascii=False) + "\n")
