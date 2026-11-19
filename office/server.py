@@ -3,6 +3,8 @@
 
   GET /         → office/index.html
   GET /static/* → office/static/ (ES modülleri)
+  GET /api/layout → office/layout.json
+  GET /api/agents → agents.json + .claude/agents/*.md frontmatter + masa atamaları
   GET /events   → Server-Sent Events: events/events.jsonl'e eklenen her satır
                   "data: <tek satırlık JSON>\\n\\n" olarak (varsayılan message event'i).
                   ?replay=N: son oturumun (bkz. replay_lines) en fazla son N olayı
@@ -23,6 +25,9 @@ ROOT = os.path.dirname(HERE)
 INDEX = os.path.join(HERE, "index.html")
 EVENTS = os.path.join(ROOT, "events", "events.jsonl")
 STATIC = os.path.realpath(os.path.join(HERE, "static"))
+LAYOUT = os.path.join(HERE, "layout.json")
+AGENTS = os.path.join(HERE, "agents.json")
+AGENTS_DIR = os.path.join(ROOT, ".claude", "agents")
 MIME = {".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8",
         ".json": "application/json; charset=utf-8", ".png": "image/png", ".svg": "image/svg+xml"}
 POLL = 0.25       # sn: dosya kontrol aralığı
@@ -44,6 +49,85 @@ def normalize(ev):
     if not ev.get("tool_input") and isinstance(ev.get("subagent"), dict):
         ev["tool_input"] = {k: v for k, v in ev["subagent"].items() if v is not None}
     return ev
+
+
+def parse_frontmatter(text):
+    """.md başındaki YAML frontmatter'ın basit alt kümesini okur: `key: value`,
+    tırnaklı değerler ve çok satırlı `>` / `|` blokları. Bağımlılık eklememek
+    için tam YAML ayrıştırıcısı değildir."""
+    lines = text.splitlines()
+    if not lines or lines[0].strip() != "---":
+        return {}
+    out, blocks = {}, {}
+    key = kind = None
+    for line in lines[1:]:
+        if line.strip() == "---":
+            break
+        if kind and (line[:1] in (" ", "\t") or not line.strip()):
+            blocks[key].append(line.strip())
+            continue
+        kind = None
+        if line[:1] in (" ", "\t", "#") or ":" not in line:
+            continue
+        key, _, val = line.partition(":")
+        key, val = key.strip(), val.strip()
+        if val in (">", "|", ">-", "|-"):
+            kind = val[0]
+            blocks[key] = []
+            out[key] = (kind, blocks[key])
+            continue
+        if len(val) >= 2 and val[0] == val[-1] and val[0] in "\"'":
+            val = val[1:-1]
+        out[key] = val
+    for k, v in out.items():
+        if isinstance(v, tuple):
+            kind, parts = v
+            out[k] = " ".join(x for x in parts if x) if kind == ">" else "\n".join(parts).strip()
+    return out
+
+
+def load_json(path, default):
+    try:
+        with open(path, encoding="utf-8") as f:
+            return json.load(f)
+    except (OSError, ValueError):
+        return default
+
+
+def agents_payload():
+    """agents.json görünüşleri + .claude/agents/*.md frontmatter (name, description,
+    model) + layout masa atamaları. Görünüşü ya da masası olmayan agent'lar
+    unassigned: true döner."""
+    looks = {a.get("name"): a for a in load_json(AGENTS, {}).get("agents", []) if a.get("name")}
+    desks = load_json(LAYOUT, {}).get("desks", {}) or {}
+    desk_of = {name: desk for desk, name in desks.items()}
+    defs = {}
+    try:
+        names = sorted(os.listdir(AGENTS_DIR))
+    except OSError:
+        names = []
+    for fn in names:
+        if not fn.endswith(".md"):
+            continue
+        try:
+            with open(os.path.join(AGENTS_DIR, fn), encoding="utf-8") as f:
+                fm = parse_frontmatter(f.read())
+        except OSError:
+            continue
+        name = fm.get("name") or fn[:-3]
+        defs[name] = {k: fm[k] for k in ("description", "model") if fm.get(k)}
+    out = []
+    for name in list(looks) + [n for n in defs if n not in looks]:
+        a = {"name": name}
+        a.update(looks.get(name, {}))
+        a.update(defs.get(name, {}))
+        if name == "manager":
+            a.setdefault("description", "Ana oturum (CLAUDE.md): planlama, delegasyon, kalite kontrol, rapor.")
+        a["desk"] = desk_of.get(name)
+        a["defined"] = name in defs or name == "manager"
+        a["unassigned"] = name not in looks or a["desk"] is None
+        out.append(a)
+    return {"agents": out}
 
 
 def sse_line(raw):
@@ -105,6 +189,13 @@ class Handler(BaseHTTPRequestHandler):
             return self._index()
         if url.path.startswith("/static/"):
             return self._static(url.path[len("/static/"):])
+        if url.path == "/api/layout":
+            data = load_json(LAYOUT, None)
+            if data is None:
+                return self.send_error(500, "layout.json okunamadı")
+            return self._json(data)
+        if url.path == "/api/agents":
+            return self._json(agents_payload())
         if url.path == "/events":
             q = parse_qs(url.query)
             try:
@@ -122,6 +213,15 @@ class Handler(BaseHTTPRequestHandler):
             return self.send_error(500, "index.html okunamadı")
         self.send_response(200)
         self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+        self.wfile.write(body)
+
+    def _json(self, data):
+        body = json.dumps(data, ensure_ascii=False).encode("utf-8")
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Cache-Control", "no-store")
         self.end_headers()

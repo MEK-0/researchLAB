@@ -1,34 +1,36 @@
-// Giriş noktası: sahneyi kurar, modu seçer (canlı / demo) ve çizim döngüsünü çalıştırır.
-import { W, setCtx } from './scene/iso.js';
+// Giriş noktası: layout ve agent'ları yükler, modu seçer (canlı / demo) ve çizim döngüsünü çalıştırır.
+import { W, P, setCtx } from './scene/iso.js';
 import { room } from './scene/room.js';
-import { ITEMS } from './scene/furniture.js';
+import { TYPES, depthOf } from './scene/furniture.js';
 import { sprite } from './scene/sprites.js';
-import { AG, KEYS, S, clock, hooks, ingest, resetAll, resetChar, upd } from './state.js';
-import { P } from './scene/iso.js';
+import { setGrid } from './scene/pathfind.js';
+import { AG, KEYS, S, agentInfo, clock, hooks, ingest, initAgents, itemOn, resetAll, upd } from './state.js';
 import { feed, clearFeed, panels } from './ui/panels.js';
 import { initTerminals, isLocal } from './ui/terminals.js';
-import { connectEvents } from './api.js';
+import { connectEvents, getJSON } from './api.js';
 import { demo, initDemoControls, speed, tick } from './demo.js';
 
-const cv = document.getElementById('cv');
+const $ = id => document.getElementById(id);
+const cv = $('cv');
 setCtx(cv.getContext('2d'));
-const ov = document.getElementById('ov'), scene = document.getElementById('scene');
-
-hooks.feed = feed; hooks.clearFeed = clearFeed; hooks.panels = panels;
+const ov = $('ov'), scene = $('scene');
 
 // Konuşma balonu ve isim etiketi (DOM katmanı)
-for (const k of KEYS) {
-  const a = AG[k];
+hooks.feed = feed; hooks.clearFeed = clearFeed; hooks.panels = panels;
+hooks.agentAdded = a => {
   a.bub = document.createElement('div'); a.bub.className = 'bub'; ov.appendChild(a.bub);
-  a.tag = document.createElement('div'); a.tag.className = 'tag';
-  a.tag.textContent = k === 'manager' ? 'Manager' : a.name.replace('Software Researcher', 'Software'); ov.appendChild(a.tag);
-}
+  a.tag = document.createElement('div'); a.tag.className = 'tag'; a.tag.textContent = a.label; ov.appendChild(a.tag);
+};
+
+let ITEMS = []; // [{depth, it}] çizim sırasına göre (zemin katmanı hariç)
+const env = { on: itemOn, t: 0 };
 
 export function draw() {
-  room();
-  const list = ITEMS.map(i => ({ k: i.k, d: i.d }));
+  env.t = clock.t;
+  room(S.layout, S.tasks.map(t => ({ st: t.st, color: agentInfo(t.a).shirt })));
+  const list = ITEMS.map(({ depth, it }) => ({ k: depth, d: () => TYPES[it.type].draw(it, env) }));
   for (const k of KEYS) { const a = AG[k]; list.push({ k: a.x + a.y, d: () => sprite(a) }); }
-  list.sort((p, q) => p.k - q.k).forEach(i => i.d());
+  list.sort((p, q) => p.k - q.k).forEach(i => i.d()); // sort kararlı: eşit anahtarda layout sırası
 }
 
 function overlay() {
@@ -45,15 +47,18 @@ function overlay() {
   }
 }
 
+function loadLayout(layout, agents) {
+  for (const it of layout.items) if (!TYPES[it.type]) console.warn(`[ofis] bilinmeyen eşya tipi "${it.type}" (${it.id})`);
+  ITEMS = layout.items.filter(it => TYPES[it.type] && TYPES[it.type].layer !== 'floor').map(it => ({ depth: depthOf(it), it }));
+  setGrid(layout);
+  initAgents(layout, agents);
+}
+
 // Mod seçimi: #demo → demo oynatıcı; #freeze[=work] → görsel test karesi; aksi halde her zaman canlı.
 const FZ = /^#freeze(=(\w+))?$/.exec(location.hash);
 const DEMO = location.hash === '#demo';
 window.addEventListener('hashchange', () => location.reload());
 window.researchLAB = { ingest };
-
-const $ = id => document.getElementById(id);
-// Test: #freeze ya da ?terms=0 iken gerçek terminallere (tmux) bağlanma
-if (!FZ && new URLSearchParams(location.search).get('terms') !== '0') initTerminals();
 
 function startLive() {
   S.live = true; S.estimateTokens = false;
@@ -86,13 +91,26 @@ function frame(now) {
   requestAnimationFrame(frame);
 }
 
-KEYS.forEach(k => resetChar(AG[k])); panels();
-if (FZ) {
-  // Görsel regresyon testi: sabit zamanda tek kare çiz, pikselleri DOM'a yaz
-  clock.t = 1.0;
-  if (FZ[2] === 'work') KEYS.forEach(k => { AG[k].state = k === 'manager' ? 'manage' : 'working'; });
-  draw(); document.documentElement.dataset.canvas = cv.toDataURL();
-} else {
+async function boot() {
+  let layout, agents;
+  try {
+    [layout, agents] = await Promise.all([getJSON('/api/layout'), getJSON('/api/agents')]);
+  } catch (e) {
+    $('src').textContent = 'Ofis düzeni yüklenemedi (' + e.message + '). Sayfayı ./office/office.sh ile açılan sunucudan aç.';
+    return;
+  }
+  loadLayout(layout, agents.agents || []);
+  // Test: #freeze ya da ?terms=0 iken gerçek terminallere (tmux) bağlanma
+  if (!FZ && new URLSearchParams(location.search).get('terms') !== '0') initTerminals();
+  panels();
+  if (FZ) {
+    // Görsel regresyon testi: sabit zamanda tek kare çiz, pikselleri DOM'a yaz
+    clock.t = 1.0;
+    if (FZ[2] === 'work') KEYS.forEach(k => { AG[k].state = k === 'manager' ? 'manage' : 'working'; });
+    draw(); document.documentElement.dataset.canvas = cv.toDataURL();
+    return;
+  }
   if (DEMO) startDemo(); else startLive();
   requestAnimationFrame(frame);
 }
+boot();

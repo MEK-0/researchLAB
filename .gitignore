@@ -30,3 +30,6 @@ dist/
 
 # office çalışma dosyaları
 office/.run/
+
+# Görsel test çıktıları
+tests/visual/last-*.png

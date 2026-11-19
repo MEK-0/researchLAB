@@ -118,5 +118,54 @@ class Basic(ServerBase):
         self.assertEqual(cm.exception.code, 404)
 
 
+class Api(ServerBase):
+    def setUp(self):
+        self.d = tempfile.TemporaryDirectory()
+        self.saved = (server.LAYOUT, server.AGENTS, server.AGENTS_DIR)
+        server.AGENTS_DIR = os.path.join(self.d.name, "agents")
+        os.makedirs(server.AGENTS_DIR)
+        server.LAYOUT = os.path.join(self.d.name, "layout.json")
+        server.AGENTS = os.path.join(self.d.name, "agents.json")
+        with open(server.LAYOUT, "w") as f:
+            json.dump({"items": [{"id": "d1", "type": "desk", "x": 0, "y": 0}], "desks": {"d1": "referee"}}, f)
+        with open(server.AGENTS, "w") as f:
+            json.dump({"agents": [{"name": "referee", "shirt": "#c92a2a"},
+                                  {"name": "eski-agent", "shirt": "#000"}]}, f)
+        for name, body in (("referee", "---\nname: referee\ndescription: Hakem: karar verir\nmodel: opus\n---\n"),
+                           ("grafik-tasarimci", "---\nname: grafik-tasarimci\ndescription: >\n  Figür ve\n  şemalar\n---\n")):
+            with open(os.path.join(server.AGENTS_DIR, name + ".md"), "w") as f:
+                f.write(body)
+
+    def tearDown(self):
+        server.LAYOUT, server.AGENTS, server.AGENTS_DIR = self.saved
+        self.d.cleanup()
+
+    def test_layout(self):
+        st, h, body = self.get("/api/layout")
+        self.assertIn("application/json", h["Content-Type"])
+        self.assertEqual(json.loads(body)["desks"], {"d1": "referee"})
+
+    def test_agents_merge(self):
+        agents = {a["name"]: a for a in json.loads(self.get("/api/agents")[2])["agents"]}
+        r = agents["referee"]
+        self.assertEqual((r["description"], r["model"], r["desk"], r["unassigned"]), ("Hakem: karar verir", "opus", "d1", False))
+        g = agents["grafik-tasarimci"]   # tanımlı ama görünüş/masa yok
+        self.assertTrue(g["unassigned"])
+        self.assertEqual(g["description"], "Figür ve şemalar")
+        e = agents["eski-agent"]         # görünüşü var, masası yok, .md yok
+        self.assertTrue(e["unassigned"])
+        self.assertFalse(e["defined"])
+
+    def test_real_files_parse(self):
+        server.LAYOUT, server.AGENTS, server.AGENTS_DIR = self.saved
+        layout = json.loads(self.get("/api/layout")[2])
+        agents = json.loads(self.get("/api/agents")[2])["agents"]
+        assigned = {a["name"] for a in agents if not a["unassigned"]}
+        self.assertEqual(assigned, set(layout["desks"].values()))
+        ids = {i["id"] for i in layout["items"]}
+        self.assertEqual(len(ids), len(layout["items"]), "eşya id'leri benzersiz olmalı")
+        self.assertTrue(set(layout["desks"]) <= ids)
+
+
 if __name__ == "__main__":
     unittest.main()

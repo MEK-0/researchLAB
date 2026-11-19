@@ -21,7 +21,8 @@ Her değişiklikten sonra mevcut özellikler test edilir:
 1. **Canlı ofis:** `./office/office.sh` → `http://localhost:8765` açılıyor, sahne çiziliyor, konsolda hata yok.
 2. **SSE:** `curl -N 'localhost:8765/events?replay=5'` olay gönderiyor; yeni olaylar canlı geliyor.
 3. **Terminaller:** 7681 ve 7682 portlarında ttyd yanıt veriyor, tmux oturumlarına bağlı.
-4. Otomatik testler: `python3 -m unittest discover -s tests` ve `node --test tests/`.
+4. Otomatik testler: `python3 -m unittest discover -s tests` ve `node --test tests/*.test.mjs`.
+5. Görsel regresyon: `tests/visual/check.sh` (sahne piksel piksel taban görüntülerle aynı olmalı; bilinçli bir görsel değişiklikte tabanı `--update` ile yenile).
 
 ## Bağımlılıklar
 - Yeni bir bağımlılık (pip, npm, brew paketi) eklemeden önce **kullanıcıya sorulur**.

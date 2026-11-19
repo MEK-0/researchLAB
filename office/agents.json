@@ -1,0 +1,9 @@
+{
+  "agents": [
+    { "name": "manager", "display_name": "Manager", "label": "Manager", "shirt": "#e8590c", "hair": "#3b2a20", "accessory": "tie" },
+    { "name": "software-researcher", "display_name": "Software Researcher", "label": "Software", "shirt": "#1c7ed6", "hair": "#1d1d1d", "accessory": "phones" },
+    { "name": "professor-lit", "display_name": "Prof. Literatür", "shirt": "#ae3ec9", "hair": "#bdbdbd", "accessory": "bun" },
+    { "name": "professor-writer", "display_name": "Prof. Yazar", "shirt": "#f59f00", "hair": "#6b3e1f", "accessory": "beret" },
+    { "name": "referee", "display_name": "Hakem", "shirt": "#c92a2a", "hair": "#2a2a2a", "accessory": "glasses" }
+  ]
+}

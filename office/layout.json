@@ -1,0 +1,99 @@
+{
+  "version": 1,
+  "room": { "gx": 16, "gy": 12, "wall_height": 64 },
+  "wall_items": [
+    { "id": "win-back", "type": "window", "wall": "back", "from": 10.5, "to": 14.05, "z1": 22, "z2": 56,
+      "props": { "mullion": [12.22, 12.33], "light_to": 36, "blinds": [46, 54] } },
+    { "id": "win-left", "type": "window", "wall": "left", "from": 1.4, "to": 3.8, "z1": 24, "z2": 56,
+      "props": { "mullion": [2.55, 2.65], "light_to": 36 } },
+    { "id": "art-back", "type": "painting", "wall": "back", "from": 0.8, "to": 2.6, "z1": 30, "z2": 48,
+      "props": { "canvas": "#f4f1ea", "shapes": [[1.2, 1.9, 34, 44, "#e8590c"], [1.75, 2.25, 33, 39, "#2f6f6a"]] } },
+    { "id": "art-left", "type": "painting", "wall": "left", "from": 10.3, "to": 11.7, "z1": 20, "z2": 42,
+      "props": { "canvas": "#f2c14e", "shapes": [[10.75, 11.25, 25, 35, "#2f6f6a"]] } },
+    { "id": "clock", "type": "clock", "wall": "back", "at": 5.1, "z": 52 },
+    { "id": "whiteboard", "type": "whiteboard", "wall": "back", "from": 5.9, "to": 10.1, "z1": 18, "z2": 52 }
+  ],
+  "items": [
+    { "id": "carpet-manager", "type": "carpet", "x": 0.15, "y": 0.15, "rot": 0, "props": { "w": 4.4, "d": 4.0, "color": "#8693a3", "inner": { "inset": 0.15, "color": "#94a1b1" } } },
+    { "id": "carpet-meeting", "type": "carpet", "x": 5.7, "y": 1.4, "rot": 0, "props": { "w": 4.6, "d": 3.5, "color": "#7d9e97", "inner": { "inset": 0.2, "color": "#8aaba3" } } },
+    { "id": "carpet-lit", "type": "carpet", "x": 0.9, "y": 6.1, "rot": 0, "props": { "w": 2.7, "d": 4.2, "color": "#c7a6b0" } },
+
+    { "id": "cabinet-manager", "type": "cabinet", "x": 0, "y": 0.3, "rot": 0, "props": { "w": 0.6, "d": 1.2, "h": 14, "plant": { "dx": 0.05, "dy": 0.25 } } },
+    { "id": "sofa-manager", "type": "sofa", "x": 0.2, "y": 2.6, "rot": 90, "props": { "w": 0.8, "d": 1.4 } },
+    { "id": "chair-manager", "type": "chair", "x": 2.5, "y": 0.95, "rot": 0 },
+    { "id": "desk-manager", "type": "desk", "x": 1.0, "y": 1.7, "rot": 0, "props": { "w": 3.0, "d": 1.0, "seat_dist": 0.75,
+      "deco": [
+        { "t": "monitor", "dx": 0.55, "dy": 0.05 },
+        { "t": "box", "dx": 2.35, "dy": 0.25, "w": 0.2, "d": 0.2, "h": 2.5, "z": 10.5, "c": "white" },
+        { "t": "box", "dx": 1.75, "dy": 0.35, "w": 0.5, "d": 0.4, "h": 0.6, "z": 10.5, "c": "paper" }
+      ] } },
+    { "id": "plant-manager", "type": "plant", "x": 3.9, "y": 0.2, "rot": 0, "props": { "tall": true, "depth": 4.65 } },
+    { "id": "glass-x-1", "type": "glass_wall", "x": 4.6, "y": 0, "rot": 90, "props": { "len": 1 } },
+    { "id": "glass-x-2", "type": "glass_wall", "x": 4.6, "y": 1, "rot": 90, "props": { "len": 1 } },
+    { "id": "glass-x-3", "type": "glass_wall", "x": 4.6, "y": 2, "rot": 90, "props": { "len": 1 } },
+    { "id": "glass-x-4", "type": "glass_wall", "x": 4.6, "y": 3, "rot": 90, "props": { "len": 1.2 } },
+    { "id": "glass-y-1", "type": "glass_wall", "x": 0, "y": 4.2, "rot": 0, "props": { "len": 1 } },
+    { "id": "glass-y-2", "type": "glass_wall", "x": 1, "y": 4.2, "rot": 0, "props": { "len": 1 } },
+    { "id": "glass-y-3", "type": "glass_wall", "x": 3.2, "y": 4.2, "rot": 0, "props": { "len": 1.4 } },
+    { "id": "door-manager", "type": "door", "x": 1.94, "y": 4.2, "rot": 0, "props": { "len": 1.32 } },
+    { "id": "plant-door", "type": "plant", "x": 3.7, "y": 4.5, "rot": 0, "props": { "tall": false } },
+
+    { "id": "printer", "type": "printer", "x": 4.95, "y": 0.3, "rot": 0, "props": { "depth": 6.05 } },
+    { "id": "chair-meet-1", "type": "chair", "x": 7.1, "y": 1.95, "rot": 0 },
+    { "id": "chair-meet-2", "type": "chair", "x": 8.9, "y": 1.95, "rot": 0 },
+    { "id": "meeting-table", "type": "meeting_table", "x": 6.6, "y": 2.4, "rot": 0, "props": { "w": 2.8, "d": 1.4 } },
+    { "id": "chair-meet-3", "type": "chair", "x": 7.1, "y": 4.25, "rot": 180 },
+    { "id": "chair-meet-4", "type": "chair", "x": 8.9, "y": 4.25, "rot": 180 },
+
+    { "id": "chair-sr", "type": "chair", "x": 12, "y": 0.95, "rot": 0 },
+    { "id": "desk-sr", "type": "desk", "x": 10.2, "y": 1.6, "rot": 0, "props": { "w": 3.6, "d": 1.0, "seat_dist": 0.65,
+      "deco": [
+        { "t": "monitor", "dx": 0.1, "dy": 0.1 },
+        { "t": "monitor", "dx": 1.05, "dy": 0.1 },
+        { "t": "box", "dx": 1.55, "dy": 0.12, "w": 0.75, "d": 0.25, "h": 0.6, "z": 10.5, "c": "white" },
+        { "t": "box", "dx": 3.0, "dy": 0.3, "w": 0.2, "d": 0.2, "h": 2.5, "z": 10.5, "c": ["#e8590c", "#c44a0a", "#a83f08"] }
+      ] } },
+    { "id": "server-rack", "type": "server_rack", "x": 14.7, "y": 0.2, "rot": 0, "props": { "linked_desk": "desk-sr" } },
+    { "id": "plant-sr", "type": "plant", "x": 10.0, "y": 0.2, "rot": 0, "props": { "tall": true } },
+
+    { "id": "shelf-1", "type": "bookshelf", "x": 0, "y": 5.9, "rot": 90, "props": { "d": 2.0 } },
+    { "id": "shelf-2", "type": "bookshelf", "x": 0, "y": 8.0, "rot": 90, "props": { "d": 2.0 } },
+    { "id": "chair-lit", "type": "chair", "x": 1.4, "y": 8.3, "rot": 90 },
+    { "id": "desk-lit", "type": "desk", "x": 2.1, "y": 7.0, "rot": 90, "props": { "w": 1.0, "d": 2.6,
+      "deco": [
+        { "t": "box", "dx": 0.15, "dy": 0.1, "w": 0.55, "d": 0.45, "h": 4, "z": 10.5, "c": ["#7048e8", "#5f3dc4", "#4c2fa3"] },
+        { "t": "box", "dx": 0.2, "dy": 0.15, "w": 0.45, "d": 0.35, "h": 2.5, "z": 14.5, "c": ["#e03131", "#c92a2a", "#a61e1e"] },
+        { "t": "lamp", "dx": 0.55, "dy": 0.75 },
+        { "t": "box", "dx": 0.15, "dy": 1.0, "w": 0.6, "d": 0.55, "h": 0.6, "h_on": 1.2, "z": 10.5, "c": "paper" }
+      ] } },
+
+    { "id": "chair-writer", "type": "chair", "x": 8.2, "y": 8.5, "rot": 0 },
+    { "id": "desk-writer", "type": "desk", "x": 6.6, "y": 9.2, "rot": 0, "props": { "w": 3.2, "d": 1.0,
+      "deco": [
+        { "t": "monitor", "dx": 0.2, "dy": 0.1 },
+        { "t": "box", "dx": 2.3, "dy": 0.15, "w": 0.5, "d": 0.55, "h": 2, "h_on": 4, "z": 10.5, "c": "paper" },
+        { "t": "box", "dx": 2.95, "dy": 0.3, "w": 0.18, "d": 0.18, "h": 2.5, "z": 10.5, "c": "white" }
+      ] } },
+
+    { "id": "chair-referee", "type": "chair", "x": 12, "y": 8.3, "rot": 90 },
+    { "id": "desk-referee", "type": "desk", "x": 12.7, "y": 7.0, "rot": 90, "props": { "w": 1.0, "d": 2.6,
+      "deco": [
+        { "t": "lamp", "dx": 0.45, "dy": 0.15 },
+        { "t": "box", "dx": 0.15, "dy": 1.0, "w": 0.6, "d": 0.5, "h": 1, "h_on": 2, "z": 10.5, "c": "paper" },
+        { "t": "box", "dx": 0.4, "dy": 1.75, "w": 0.22, "d": 0.22, "h": 2, "z": 10.5, "c": ["#e03131", "#c92a2a", "#a61e1e"] }
+      ] } },
+
+    { "id": "kitchen", "type": "kitchen", "x": 15.0, "y": 4.4, "rot": 0 },
+    { "id": "water-cooler", "type": "water_cooler", "x": 15.1, "y": 7.2, "rot": 0 },
+    { "id": "plant-sw", "type": "plant", "x": 0.3, "y": 11.0, "rot": 0, "props": { "tall": true } },
+    { "id": "plant-se", "type": "plant", "x": 15.1, "y": 11.0, "rot": 0, "props": { "tall": true } }
+  ],
+  "desks": {
+    "desk-manager": "manager",
+    "desk-sr": "software-researcher",
+    "desk-lit": "professor-lit",
+    "desk-writer": "professor-writer",
+    "desk-referee": "referee"
+  },
+  "handoff": { "desk": "desk-manager", "dist": 0.45 }
+}
