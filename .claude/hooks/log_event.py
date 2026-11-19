@@ -6,6 +6,7 @@ tek satırlık bir JSON kaydı ekler. 3B ofis arayüzünün veri kaynağıdır.
 
 Kurallar: yalnızca standart kütüphane; asla hata fırlatmaz; her durumda exit 0.
 """
+import fcntl
 import json
 import os
 import re
@@ -130,6 +131,102 @@ def _copy_raw_transcript(data, root):
         return {"copied": False, "reason": _short(repr(e))}
 
 
+# ---------- token sayımı ----------
+OFFSETS_NAME = ".token_offsets.json"
+SEEN_KEEP = 200  # sayaç dosyasında transcript başına saklanan son mesaj kimliği
+
+
+def _usage_lines(lines, seen, skip_sidechain=False):
+    """Assistant mesajlarının usage'ını toplar. Aynı mesaj transcript'te birden
+    çok satıra yazılır; mesaj kimliği başına son satır sayılır, `seen` içindekiler
+    (önceki sayımda sayılmış) atlanır. (tokens, cache_read, yeni_kimlikler) döner."""
+    per_id = {}
+    order = []
+    for line in lines:
+        try:
+            d = json.loads(line)
+        except Exception:
+            continue
+        if not isinstance(d, dict) or d.get("type") != "assistant" \
+                or (skip_sidechain and d.get("isSidechain")):
+            continue
+        msg = d.get("message") if isinstance(d.get("message"), dict) else {}
+        u = msg.get("usage")
+        if not isinstance(u, dict):
+            continue
+        mid = msg.get("id") or d.get("uuid")
+        if not mid or mid in seen:
+            continue
+        if mid not in per_id:
+            order.append(mid)
+        per_id[mid] = u
+    total = cache_read = 0
+    for u in per_id.values():
+        total += int(u.get("input_tokens") or 0) + int(u.get("output_tokens") or 0) \
+            + int(u.get("cache_creation_input_tokens") or 0)
+        cache_read += int(u.get("cache_read_input_tokens") or 0)
+    return total, cache_read, order
+
+
+def _subagent_tokens(data):
+    path = _subagent_transcript(data)
+    if not path:
+        return None
+    with open(path, "r", encoding="utf-8", errors="replace") as f:
+        total, cache_read, _ = _usage_lines(f, set())
+    return total, cache_read
+
+
+def _main_tokens(data, root):
+    """Ana transcript'te son Stop'tan sonra eklenen kısmı sayar. Kaldığı yer
+    events/.token_offsets.json'da, eşzamanlı hook'lara karşı kilitli tutulur."""
+    path = data.get("transcript_path")
+    if not path or not os.path.isfile(path):
+        return None
+    events_dir = os.path.join(root, "events")
+    os.makedirs(events_dir, exist_ok=True)
+    with open(os.path.join(events_dir, OFFSETS_NAME), "a+", encoding="utf-8") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        lock.seek(0)
+        try:
+            offsets = json.loads(lock.read() or "{}")
+        except Exception:
+            offsets = {}
+        st = offsets.get(path) if isinstance(offsets.get(path), dict) else {}
+        start = int(st.get("offset") or 0)
+        seen = set(st.get("seen") or [])
+        size = os.path.getsize(path)
+        if size < start:  # dosya kırpılmış/yeniden yazılmış
+            start, seen = 0, set()
+        with open(path, "rb") as f:
+            f.seek(start)
+            chunk = f.read()
+        end = chunk.rfind(b"\n") + 1  # yalnızca tamamlanmış satırlar
+        lines = chunk[:end].decode("utf-8", "replace").splitlines()
+        total, cache_read, ids = _usage_lines(lines, seen, skip_sidechain=True)
+        keep = (list(st.get("seen") or []) + ids)[-SEEN_KEEP:]
+        offsets[path] = {"offset": start + end, "seen": keep}
+        lock.seek(0)
+        lock.truncate()
+        lock.write(json.dumps(offsets, ensure_ascii=False))
+        lock.flush()
+    return total, cache_read
+
+
+def _tokens(data, root):
+    try:
+        event = data.get("hook_event_name")
+        if event == "SubagentStop":
+            res = _subagent_tokens(data)
+        elif event == "Stop":
+            res = _main_tokens(data, root)
+        else:
+            return None
+        return res
+    except Exception:
+        return None
+
+
 def main():
     try:
         raw = sys.stdin.read()
@@ -189,6 +286,9 @@ def main():
         root = _project_dir()
         if data.get("hook_event_name") == "SubagentStop":
             record["raw_transcript"] = _copy_raw_transcript(data, root)
+        tok = _tokens(data, root)
+        if tok is not None:
+            record["tokens"], record["tokens_cache_read"] = tok
 
         events_dir = os.path.join(root, "events")
         os.makedirs(events_dir, exist_ok=True)
