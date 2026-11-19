@@ -1,0 +1,25 @@
+# Canlı olay günlüğü (events/.gitkeep kalır)
+events/events.jsonl
+
+# Claude Code yerel ayarları
+.claude/settings.local.json
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Gizli bilgiler
+.env
+
+# macOS
+.DS_Store
+
+# Gerçek projeler şimdilik repoya girmez; yalnızca şablon
+workspace/*
+!workspace/_template/
+
+# office/ (ileride)
+node_modules/
+dist/
