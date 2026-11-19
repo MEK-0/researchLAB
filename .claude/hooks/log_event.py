@@ -15,6 +15,11 @@ from datetime import datetime, timezone
 
 SUMMARY_MAX = 200
 AGENT_TOOLS = {"Task", "Agent"}
+# events.jsonl'e taşınan tool_input alanları (beyaz liste, kısaltılmış)
+TOOL_INPUT_KEYS = (
+    "subagent_type", "description", "command", "file_path",
+    "pattern", "query", "url", "path",
+)
 # Hook girdisinde agent kimliğine dair olabilecek alanlar
 AGENT_ID_KEYS = (
     "agent_id",
@@ -153,6 +158,18 @@ def main():
         agent = {k: data[k] for k in AGENT_ID_KEYS if data.get(k) is not None}
         if agent:
             record["agent"] = agent
+        if data.get("agent_type"):
+            record["agent_type"] = data.get("agent_type")
+
+        # Ofis arayüzü için kısa alanlar (büyük içerikler, ör. Write.content, alınmaz)
+        ti = data.get("tool_input")
+        if isinstance(ti, dict):
+            slim = {k: _short(ti[k], 300) for k in TOOL_INPUT_KEYS if ti.get(k)}
+            if slim:
+                record["tool_input"] = slim
+        for key in ("prompt", "last_assistant_message"):
+            if data.get(key):
+                record[key] = _short(data.get(key), 500)
 
         # Alt agent çağrıları
         if data.get("tool_name") in AGENT_TOOLS and isinstance(data.get("tool_input"), dict):
