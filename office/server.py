@@ -2,6 +2,7 @@
 """researchLAB ofis sunucusu (yalnızca standart kütüphane).
 
   GET /         → office/index.html
+  GET /static/* → office/static/ (ES modülleri)
   GET /events   → Server-Sent Events: events/events.jsonl'e eklenen her satır
                   "data: <tek satırlık JSON>\\n\\n" olarak (varsayılan message event'i).
                   ?replay=N: son oturumun (bkz. replay_lines) en fazla son N olayı
@@ -21,6 +22,9 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 INDEX = os.path.join(HERE, "index.html")
 EVENTS = os.path.join(ROOT, "events", "events.jsonl")
+STATIC = os.path.realpath(os.path.join(HERE, "static"))
+MIME = {".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8",
+        ".json": "application/json; charset=utf-8", ".png": "image/png", ".svg": "image/svg+xml"}
 POLL = 0.25       # sn: dosya kontrol aralığı
 KEEPALIVE = 15.0  # sn: bağlantıyı canlı tutan yorum satırı
 
@@ -99,6 +103,8 @@ class Handler(BaseHTTPRequestHandler):
         url = urlparse(self.path)
         if url.path in ("/", "/index.html"):
             return self._index()
+        if url.path.startswith("/static/"):
+            return self._static(url.path[len("/static/"):])
         if url.path == "/events":
             q = parse_qs(url.query)
             try:
@@ -116,6 +122,23 @@ class Handler(BaseHTTPRequestHandler):
             return self.send_error(500, "index.html okunamadı")
         self.send_response(200)
         self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+        self.wfile.write(body)
+
+    def _static(self, rel):
+        """office/static/ altından dosya servis eder; dışarı çıkmaya izin vermez."""
+        path = os.path.realpath(os.path.join(STATIC, rel))
+        if not path.startswith(STATIC + os.sep) or not os.path.isfile(path):
+            return self.send_error(404)
+        ctype = MIME.get(os.path.splitext(path)[1].lower())
+        if not ctype:
+            return self.send_error(404)
+        with open(path, "rb") as f:
+            body = f.read()
+        self.send_response(200)
+        self.send_header("Content-Type", ctype)
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Cache-Control", "no-store")
         self.end_headers()

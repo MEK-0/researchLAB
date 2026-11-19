@@ -99,6 +99,16 @@ class Replay(ServerBase):
 
 
 class Basic(ServerBase):
+    def test_static(self):
+        st, h, body = self.get("/static/main.js")
+        self.assertEqual(st, 200)
+        self.assertIn("javascript", h["Content-Type"])
+        for bad in ("/static/../server.py", "/static/%2e%2e/server.py", "/static/..%2fserver.py",
+                    "/static/../../.claude/hooks/log_event.py", "/static/scene/../../index.html"):
+            with self.assertRaises(urllib.error.HTTPError, msg=bad) as cm:
+                self.get(bad)
+            self.assertEqual(cm.exception.code, 404, bad)
+
     def test_index_and_404(self):
         st, h, body = self.get("/")
         self.assertEqual(st, 200)
