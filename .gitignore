@@ -1,5 +1,9 @@
-# Canlı olay günlüğü (events/.gitkeep kalır)
-events/events.jsonl
+# Canlı olay günlüğü ve sayaçlar (events/.gitkeep kalır)
+events/*
+!events/.gitkeep
+
+# Veritabanları
+data/*.db
 
 # Claude Code yerel ayarları
 .claude/settings.local.json
