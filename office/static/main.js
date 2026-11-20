@@ -6,7 +6,7 @@ import { sprite } from './scene/sprites.js';
 import { setGrid } from './scene/pathfind.js';
 import { AG, KEYS, S, agentInfo, clock, hooks, ingest, initAgents, itemOn, resetAll, upd } from './state.js';
 import { feed, clearFeed, panels } from './ui/panels.js';
-import { initTerminals, isLocal } from './ui/terminals.js';
+import { initManagerWatch, initTerminals, isLocal } from './ui/terminals.js';
 import { connectEvents, getJSON } from './api.js';
 import { demo, initDemoControls, speed, tick } from './demo.js';
 
@@ -101,7 +101,7 @@ async function boot() {
   }
   loadLayout(layout, agents.agents || []);
   // Test: #freeze ya da ?terms=0 iken gerçek terminallere (tmux) bağlanma
-  if (!FZ && new URLSearchParams(location.search).get('terms') !== '0') initTerminals();
+  if (!FZ && new URLSearchParams(location.search).get('terms') !== '0') { initTerminals(); initManagerWatch(); }
   panels();
   if (FZ) {
     // Görsel regresyon testi: sabit zamanda tek kare çiz, pikselleri DOM'a yaz

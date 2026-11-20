@@ -17,6 +17,8 @@ const FAKE = [`<span class="n">~/researchLAB</span> <span class="p">$</span> cla
 {"e":"SubagentStart","a":"professor-lit"}
 {"e":"PreToolUse","a":"professor-lit"}`];
 
+const $ = id => document.getElementById(id);
+
 export function initTerminals() {
   TERMS.forEach((t, i) => {
     const box = document.getElementById(t.id), a = document.getElementById(t.link);
@@ -24,3 +26,33 @@ export function initTerminals() {
     else { box.innerHTML = `<pre class="fake">${FAKE[i]}\n\n<span class="n">Örnek görünüm. Gerçek terminal, ofis ./office.sh ile yerelde açıldığında burada çalışır.</span></pre>`; a.remove(); }
   });
 }
+
+// Terminal 1'de Manager (claude) kapalıysa başlıkta uyarı + "Manager'ı başlat".
+// Durum /api/status'tan 3 sn'de bir okunur; düğme POST /api/manager/start çağırır
+// (sunucu office.sh manager-start ile başlatır; önceki konuşmaya --resume ile devam eder).
+export function initManagerWatch({ every = 3000 } = {}) {
+  const box = $('mgr'), msg = $('mgrmsg'), btn = $('mgrstart');
+  if (!box || !isLocal) return;
+  const token = document.querySelector('meta[name="office-token"]')?.content || '';
+  let pending = false;
+  const show = st => {
+    box.hidden = st.manager_running;
+    if (!pending) msg.textContent = st.session_exists ? 'Manager kapalı' : 'Manager oturumu yok';
+  };
+  const poll = async () => {
+    try { const r = await fetch('/api/status', { cache: 'no-store' }); if (r.ok) show(await r.json()); } catch (_) { /* sunucu yok */ }
+  };
+  btn.addEventListener('click', async () => {
+    pending = true; btn.disabled = true; msg.textContent = 'Başlatılıyor…';
+    try {
+      const r = await fetch('/api/manager/start', { method: 'POST', headers: { 'X-Office-Token': token } });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok || !d.ok) msg.textContent = d.error || `Başlatılamadı (${r.status})`;
+      // oturum yeniden kurulduysa terminal bağlantısı kopmuştur: iframe'i yenile
+      if (d.action === 'created') { const f = $('t1').querySelector('iframe'); if (f) f.src = f.src; }
+    } catch (e) { msg.textContent = 'Başlatılamadı: ' + e.message; }
+    setTimeout(() => { pending = false; btn.disabled = false; poll(); }, 1500);
+  });
+  poll(); setInterval(poll, every);
+}
+

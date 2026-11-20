@@ -31,6 +31,9 @@ h1{font:400 clamp(26px,3vw,34px)/1.05 "Silkscreen",monospace;margin:0 0 4px;text
 .th b{font:400 14px "Silkscreen",monospace}
 .th .sub{color:#93a7a0}
 .th a{margin-left:auto;color:#9fd6e8;font-size:13px}
+.mgr{display:inline-flex;align-items:center;gap:8px;color:#ffd8a8;font-weight:600;font-size:13px}
+.mgr::before{content:"";width:8px;height:8px;background:#ff6b6b}
+.th .mgr button{min-height:32px;padding:0 10px;font-size:13px;border-color:#0b1514;background:#ffd8a8;color:#1a2a27;box-shadow:2px 2px 0 #0b1514}
 .tb{position:relative;min-height:0;overflow:hidden}
 .tb iframe{position:absolute;inset:0;width:100%;height:100%;border:0;background:#0b1110}
 .fake{margin:0;padding:12px 14px;height:100%;overflow:auto;color:#cfe3dc;font:13px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;white-space:pre-wrap}
@@ -101,7 +104,7 @@ button.on{background:var(--ink);color:var(--panel)}
   </div>
 </div>
 <aside class="right">
-  <section class="term"><div class="th"><span class="dot" style="background:#e8590c"></span><b>Terminal 1</b><span class="sub">Manager · claude</span><a id="l1" href="#" target="_blank" rel="noopener">Yeni sekmede aç</a></div><div class="tb" id="t1"></div></section>
+  <section class="term"><div class="th"><span class="dot" style="background:#e8590c"></span><b>Terminal 1</b><span class="sub">Manager · claude</span><span class="mgr" id="mgr" role="status" hidden><span id="mgrmsg">Manager kapalı</span><button id="mgrstart" type="button">Manager'ı başlat</button></span><a id="l1" href="#" target="_blank" rel="noopener">Yeni sekmede aç</a></div><div class="tb" id="t1"></div></section>
   <section class="term"><div class="th"><span class="dot" style="background:#7ee0ff"></span><b>Terminal 2</b><span class="sub">serbest kabuk</span><a id="l2" href="#" target="_blank" rel="noopener">Yeni sekmede aç</a></div><div class="tb" id="t2"></div></section>
 </aside>
 </div>
