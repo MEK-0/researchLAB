@@ -227,6 +227,15 @@ def _tokens(data, root):
         return None
 
 
+def _write_manager_session(events_dir, sid):
+    """Manager'ın güncel oturum kimliğini events/.manager_session'a atomik yazar."""
+    path = os.path.join(events_dir, ".manager_session")
+    tmp = path + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        f.write(sid + "\n")
+    os.replace(tmp, path)
+
+
 def main():
     try:
         raw = sys.stdin.read()
@@ -294,6 +303,15 @@ def main():
 
         events_dir = os.path.join(root, "events")
         os.makedirs(events_dir, exist_ok=True)
+
+        # Manager oturumu (office/manager.sh RESEARCHLAB_MANAGER=1 ile başlatır):
+        # olaylar işaretlenir, oturum kimliği --resume ve /api/status için saklanır.
+        if os.environ.get("RESEARCHLAB_MANAGER") == "1":
+            record["manager"] = True
+            sid = data.get("session_id")
+            if data.get("hook_event_name") == "SessionStart" and isinstance(sid, str) and sid:
+                _write_manager_session(events_dir, sid)
+
         with open(os.path.join(events_dir, "events.jsonl"), "a", encoding="utf-8") as f:
             f.write(json.dumps(record, ensure_ascii=False) + "\n")
     except Exception:

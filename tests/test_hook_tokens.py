@@ -16,7 +16,7 @@ def asst(mid, inp, out, cc=0, cr=0, side=False):
         "cache_creation_input_tokens": cc, "cache_read_input_tokens": cr}}})
 
 
-class HookTokens(unittest.TestCase):
+class HookBase(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.root = self.tmp.name
@@ -24,8 +24,11 @@ class HookTokens(unittest.TestCase):
     def tearDown(self):
         self.tmp.cleanup()
 
-    def run_hook(self, payload):
+    def run_hook(self, payload, manager=False):
         env = dict(os.environ, CLAUDE_PROJECT_DIR=self.root)
+        env.pop("RESEARCHLAB_MANAGER", None)
+        if manager:
+            env["RESEARCHLAB_MANAGER"] = "1"
         subprocess.run([sys.executable, HOOK], input=json.dumps(payload), text=True, env=env, check=True)
         with open(os.path.join(self.root, "events", "events.jsonl")) as f:
             return json.loads(f.read().splitlines()[-1])
@@ -36,6 +39,8 @@ class HookTokens(unittest.TestCase):
             f.write("".join(l + "\n" for l in lines))
         return p
 
+
+class HookTokens(HookBase):
     def test_subagent_dedup(self):
         p = self.write("agent.jsonl", [
             json.dumps({"type": "user", "message": {"content": "x"}}),
@@ -71,6 +76,31 @@ class HookTokens(unittest.TestCase):
         self.assertNotIn("tokens", ev)
         ev = self.run_hook({"hook_event_name": "Stop", "transcript_path": "/yok.jsonl"})
         self.assertNotIn("tokens", ev)
+
+
+
+class HookManagerSession(HookBase):
+    """RESEARCHLAB_MANAGER=1 ile çalışan oturum işaretlenir ve kimliği saklanır."""
+    def sid_file(self):
+        p = os.path.join(self.root, "events", ".manager_session")
+        if not os.path.exists(p):
+            return None
+        with open(p) as f:
+            return f.read().strip()
+
+    def test_manager_session_recorded(self):
+        ev = self.run_hook({"hook_event_name": "SessionStart", "session_id": "s-1", "source": "startup"}, manager=True)
+        self.assertTrue(ev["manager"])
+        self.assertEqual(self.sid_file(), "s-1")
+        ev = self.run_hook({"hook_event_name": "UserPromptSubmit", "session_id": "s-1"}, manager=True)
+        self.assertTrue(ev["manager"])
+        self.run_hook({"hook_event_name": "SessionStart", "session_id": "s-2", "source": "clear"}, manager=True)
+        self.assertEqual(self.sid_file(), "s-2")
+
+    def test_other_sessions_untouched(self):
+        ev = self.run_hook({"hook_event_name": "SessionStart", "session_id": "dev", "source": "startup"})
+        self.assertNotIn("manager", ev)
+        self.assertIsNone(self.sid_file())
 
 
 if __name__ == "__main__":

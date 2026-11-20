@@ -27,6 +27,7 @@ class ServerBase(unittest.TestCase):
         server.EVENTS = cls.events
         cls.httpd = server.OfficeServer(("127.0.0.1", 0), server.Handler)
         cls.port = cls.httpd.server_address[1]
+        server.PORT = cls.port
         threading.Thread(target=cls.httpd.serve_forever, daemon=True).start()
 
     @classmethod
@@ -165,6 +166,86 @@ class Api(ServerBase):
         ids = {i["id"] for i in layout["items"]}
         self.assertEqual(len(ids), len(layout["items"]), "eşya id'leri benzersiz olmalı")
         self.assertTrue(set(layout["desks"]) <= ids)
+
+
+class Activity(unittest.TestCase):
+    """activity(): Manager meşgul mü, hangi alt agent'lar bitmedi."""
+    def evs(self, *rows):
+        return [json.loads(ev(*r[:2], **(r[2] if len(r) > 2 else {}))) for r in rows]
+
+    def test_turn_and_subagents(self):
+        sub = lambda i, t: {"agent": {"agent_id": i, "agent_type": t}, "agent_type": t}
+        e = self.evs(("SessionStart", "M", {"source": "startup"}), ("UserPromptSubmit", "M"))
+        self.assertTrue(server.activity(e, "M")["busy"])
+        e += self.evs(("SubagentStart", "M", sub("a1", "referee")), ("SubagentStart", "M", sub("a2", "professor-lit")),
+                      ("SubagentStop", "M", sub("a1", "referee")), ("Stop", "M"))
+        a = server.activity(e, "M")
+        self.assertFalse(a["busy"])
+        self.assertEqual([s["agent_type"] for s in a["subagents"]], ["professor-lit"])  # arka planda sürüyor
+        e += self.evs(("SubagentStop", "M", sub("a2", "professor-lit")))
+        self.assertEqual(server.activity(e, "M")["subagents"], [])
+
+    def test_other_sessions_and_reset(self):
+        e = self.evs(("SessionStart", "M", {"source": "startup"}), ("UserPromptSubmit", "M"),
+                     ("UserPromptSubmit", "DEV"),                       # geliştirme oturumu karışmaz
+                     ("SessionStart", "M", {"source": "compact"}))       # sıkıştırma sınır değil
+        self.assertTrue(server.activity(e, "M")["busy"])
+        self.assertFalse(server.activity(e + self.evs(("Stop", "M")), "M")["busy"])
+        e += self.evs(("SessionStart", "M", {"source": "resume"}))       # yeniden açılış sıfırlar
+        self.assertFalse(server.activity(e, "M")["busy"])
+        self.assertEqual(server.activity([], None), {"session_id": None, "busy": False, "subagents": []})
+
+    def test_latest_session_fallback(self):
+        e = self.evs(("SessionStart", "A", {"source": "startup"}), ("SessionStart", "B", {"source": "startup"}),
+                     ("UserPromptSubmit", "B"))
+        a = server.activity(e)
+        self.assertEqual((a["session_id"], a["busy"]), ("B", True))
+
+
+class Status(ServerBase):
+    def setUp(self):
+        self.saved = (server.manager_process, server.read_manager_session, server.start_manager)
+        self.running = True
+        server.manager_process = lambda *a: {"session": True, "running": self.running}
+        server.read_manager_session = lambda *a: "M"
+        self.calls = []
+        server.start_manager = lambda: (self.calls.append(1), (200, {"ok": True, "action": "started"}))[1]
+
+    def tearDown(self):
+        server.manager_process, server.read_manager_session, server.start_manager = self.saved
+
+    def status(self):
+        return json.loads(self.get("/api/status")[2])
+
+    def test_status(self):
+        self.write_events([ev("SessionStart", "M", source="startup"), ev("UserPromptSubmit", "M")])
+        st = self.status()
+        self.assertTrue(st["manager_running"] and st["manager_busy"] and st["busy"])
+        self.running = False                       # claude yoksa meşgul sayılmaz
+        st = self.status()
+        self.assertFalse(st["manager_running"] or st["busy"])
+
+    def post(self, headers):
+        req = urllib.request.Request(self.url("/api/manager/start"), data=b"", method="POST", headers=headers)
+        try:
+            with urllib.request.urlopen(req, timeout=5) as r:
+                return r.status
+        except urllib.error.HTTPError as e:
+            return e.code
+
+    def test_write_guard(self):
+        body = self.get("/")[2].decode()
+        token = body.split('name="office-token" content="')[1].split('"')[0]
+        self.assertEqual(token, server.TOKEN)
+        host = "127.0.0.1:%d" % self.port
+        good = {"Host": host, "Origin": "http://" + host, "X-Office-Token": token}
+        for bad in ({**good, "X-Office-Token": "yanlis"}, {k: v for k, v in good.items() if k != "X-Office-Token"},
+                    {**good, "Origin": "http://evil.example"}, {k: v for k, v in good.items() if k != "Origin"},
+                    {**good, "Host": "evil.example:%d" % self.port}):
+            self.assertEqual(self.post(bad), 403, bad)
+        self.assertEqual(self.calls, [])
+        self.assertEqual(self.post(good), 200)
+        self.assertEqual(self.calls, [1])
 
 
 if __name__ == "__main__":
