@@ -31,7 +31,8 @@ from urllib.parse import parse_qs, urlparse
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 INDEX = os.path.join(HERE, "index.html")
-EVENTS = os.path.join(ROOT, "events", "events.jsonl")
+# OFFICE_EVENTS: testlerde gerçek olay günlüğü yerine başka bir dosya
+EVENTS = os.environ.get("OFFICE_EVENTS") or os.path.join(ROOT, "events", "events.jsonl")
 STATIC = os.path.realpath(os.path.join(HERE, "static"))
 LAYOUT = os.path.join(HERE, "layout.json")
 AGENTS = os.path.join(HERE, "agents.json")
@@ -39,11 +40,12 @@ AGENTS_DIR = os.path.join(ROOT, ".claude", "agents")
 MIME = {".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8",
         ".json": "application/json; charset=utf-8", ".png": "image/png", ".svg": "image/svg+xml"}
 OFFICE_SH = os.path.join(HERE, "office.sh")
-MANAGER_SESSION = os.path.join(ROOT, "events", ".manager_session")
+MANAGER_SESSION = os.path.join(os.path.dirname(EVENTS), ".manager_session")
 TMUX_SESSION = os.environ.get("OFFICE_S1", "researchlab-manager")
 # Manager süreci adı (testlerde OFFICE_MANAGER_BIN ile sahte komut verilir)
 MANAGER_PROC = os.path.basename(os.environ.get("OFFICE_MANAGER_BIN", "claude"))
 PORT = 8765
+TERM_PORTS = (int(os.environ.get("OFFICE_T1", 7681)), int(os.environ.get("OFFICE_T2", 7682)))
 TOKEN = secrets.token_urlsafe(24)   # yazma uçları için; her açılışta yeni
 STATUS_TAIL = 4 * 1024 * 1024       # /api/status events.jsonl'in son 4 MB'ına bakar
 POLL = 0.25       # sn: dosya kontrol aralığı
@@ -399,7 +401,8 @@ class Handler(BaseHTTPRequestHandler):
                 body = f.read()
         except OSError:
             return self.send_error(500, "index.html okunamadı")
-        meta = ('<meta name="office-token" content="%s">\n</head>' % TOKEN).encode()
+        meta = ('<meta name="office-token" content="%s">\n<meta name="office-terminals" content="%d,%d">\n</head>'
+                % ((TOKEN,) + TERM_PORTS)).encode()
         body = body.replace(b"</head>", meta, 1)
         self.send_response(200)
         self.send_header("Content-Type", "text/html; charset=utf-8")

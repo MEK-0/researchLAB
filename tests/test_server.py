@@ -237,6 +237,7 @@ class Status(ServerBase):
         body = self.get("/")[2].decode()
         token = body.split('name="office-token" content="')[1].split('"')[0]
         self.assertEqual(token, server.TOKEN)
+        self.assertIn('<meta name="office-terminals" content="%d,%d">' % server.TERM_PORTS, body)
         host = "127.0.0.1:%d" % self.port
         good = {"Host": host, "Origin": "http://" + host, "X-Office-Token": token}
         for bad in ({**good, "X-Office-Token": "yanlis"}, {k: v for k, v in good.items() if k != "X-Office-Token"},

@@ -1,5 +1,7 @@
-// Terminaller: office.sh iki ttyd (tmux destekli) sunucusunu bu portlarda başlatır.
-const TERMS = [{ id: 't1', link: 'l1', port: 7681 }, { id: 't2', link: 'l2', port: 7682 }];
+// Terminaller: office.sh iki ttyd (tmux destekli) sunucusunu başlatır; portları sunucu
+// index.html'e <meta name="office-terminals"> olarak yazar (varsayılan 7681, 7682).
+const PORTS = (document.querySelector('meta[name="office-terminals"]')?.content || '7681,7682').split(',').map(Number);
+const TERMS = [{ id: 't1', link: 'l1', port: PORTS[0] || 7681 }, { id: 't2', link: 'l2', port: PORTS[1] || 7682 }];
 export const isLocal = /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
 
 const FAKE = [`<span class="n">~/researchLAB</span> <span class="p">$</span> claude
