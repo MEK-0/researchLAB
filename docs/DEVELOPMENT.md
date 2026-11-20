@@ -23,6 +23,7 @@ Her değişiklikten sonra mevcut özellikler test edilir:
 3. **Terminaller:** 7681 ve 7682 portlarında ttyd yanıt veriyor, tmux oturumlarına bağlı.
 4. Otomatik testler: `python3 -m unittest discover -s tests` ve `node --test tests/*.test.mjs`.
 5. Görsel regresyon: `tests/visual/check.sh` (sahne piksel piksel taban görüntülerle aynı olmalı; bilinçli bir görsel değişiklikte tabanı `--update` ile yenile).
+6. Süreç/terminal/masaüstü değişikliklerinde uçtan uca deneme kullanıcının gerçek oturumlarında yapılmaz. Ayrı bir kopya `OFFICE_*` ve `RESEARCHLAB_USER_DATA` ortam değişkenleriyle (farklı port, tmux adı, sahte Manager, ayrı olay dosyası) çalıştırılır; bkz. `office/README.md`.
 
 ## Bağımlılıklar
 - Yeni bir bağımlılık (pip, npm, brew paketi) eklemeden önce **kullanıcıya sorulur**.

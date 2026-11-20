@@ -7,10 +7,27 @@ Geliştirme kuralları için bkz. [`docs/DEVELOPMENT.md`](../docs/DEVELOPMENT.md
 ```bash
 brew install tmux ttyd        # bir kez
 ./office/office.sh            # başlatır ve http://localhost:8765 açar
-./office/office.sh status     # durum
+./office/office.sh status     # durum (--json: makinece okunur, port sahipliği dahil)
 ./office/office.sh stop       # sunucuları durdurur (tmux oturumları korunur)
 ./office/office.sh kill       # + tmux oturumlarını kapatır
+./office/office.sh manager-start   # Terminal 1'de Manager'ı başlatır (ofisteki düğme bunu kullanır)
 ```
+`office.sh` süreç başlatma mantığının tek kaynağıdır; masaüstü uygulaması (`desktop/`) da onu çağırır.
+
+- **Terminaller:** ttyd, tmux'a `tmux new-session -A -s <oturum> -c <repo>` ile bağlanır. Oturum yoksa kurulur, varsa ona bağlanılır; dışarıdan öldürülen oturum, terminal yeniden bağlanınca geri gelir.
+- **`researchlab-manager`:** Her zaman `office/manager.sh; exec $SHELL -l` ile kurulur. `manager.sh` repo dizininde, `events/.manager_session`'daki önceki Manager konuşması varsa `claude --resume <id>`, yoksa `claude` çalıştırır.
+- **Manager konuşmasının kimliği:** `manager.sh` `RESEARCHLAB_MANAGER=1` verir. Hook bu oturumun olaylarına `manager: true` ekler ve `SessionStart`'ta kimliği kaydeder. Bu klasörde aynı anda başka bir Claude Code oturumu (ör. geliştirme) açık olsa da karışmaz.
+
+Test ortam değişkenleri (gerçek oturumlara dokunmadan ayrı bir kopya çalıştırmak için):
+
+| Değişken | Varsayılan |
+|---|---|
+| `OFFICE_PORT`, `OFFICE_T1`, `OFFICE_T2` | `8765`, `7681`, `7682` |
+| `OFFICE_S1`, `OFFICE_S2` | `researchlab-manager`, `researchlab-shell` |
+| `OFFICE_RUN` | `office/.run` (PID ve log dosyaları) |
+| `OFFICE_MANAGER_BIN` | `claude` (sahte Manager komutu) |
+| `OFFICE_EVENTS` | `events/events.jsonl` (yalnızca sunucu) |
+| `RESEARCHLAB_USER_DATA` | uygulama ayar klasörü (yalnızca `desktop/`) |
 
 | Adres | Ne |
 |---|---|
@@ -27,7 +44,8 @@ office/
 ├── layout.json           oda, duvar öğeleri, eşyalar, masa atamaları, teslim noktası
 ├── agents.json           agent görünüşleri
 ├── server.py             HTTP + SSE sunucusu (yalnızca standart kütüphane)
-├── office.sh             sunucu + ttyd + tmux yönetimi
+├── office.sh             sunucu + ttyd + tmux yönetimi (tek kaynak)
+├── manager.sh            Manager'ı başlatır (--resume ya da yeni)
 └── static/
     ├── main.js           giriş: layout/agents yükleme, mod seçimi, çizim döngüsü
     ├── state.js          agent durumları, görevler, olay işleme (ingest)
@@ -61,10 +79,12 @@ Olaydaki `agent_type` tam adla eşleşir; `agent_type` yoksa olay ana oturumundu
 ## Sunucu uçları
 | Uç | Açıklama |
 |---|---|
-| `GET /` | `index.html` |
+| `GET /` | `index.html` (+ `office-token` ve `office-terminals` meta etiketleri) |
 | `GET /static/*` | ES modülleri (dizin dışına çıkış engelli) |
 | `GET /api/layout` | `layout.json` |
 | `GET /api/agents` | `agents.json` + `.claude/agents/*.md` frontmatter (`description`, `model`) + masa ataması; görünüşü ya da masası olmayan agent `unassigned: true` |
+| `GET /api/status` | `{manager_running, manager_busy, active_subagents, busy, session_exists, manager_session_id}`. Manager çalışıyor mu (tmux pane'inin süreç ağacında `claude`), turu sürüyor mu (son `UserPromptSubmit`'ten sonra `Stop` yok), bitmemiş alt agent'lar (`SubagentStart` var, `SubagentStop` yok). `busy` = Manager çalışıyor ve (meşgul ya da aktif alt agent var). |
+| `POST /api/manager/start` | Manager'ı başlatır (`office.sh manager-start`). Host ve Origin yalnızca `localhost:<port>` olabilir; `X-Office-Token` başlığı, sunucunun her açılışta ürettiği ve `index.html`'e `<meta name="office-token">` olarak gömdüğü token olmalı. Terminal 1'de kabuk dışında bir program açıksa tuş göndermez. |
 | `GET /events?replay=N` | SSE. Varsayılan `message` event'i, her olay `data: <tek satırlık JSON>\n\n`. Önce **son oturumun** (sıkıştırma hariç en son `SessionStart` ve aynı `session_id`) en fazla son N olayı, sonra canlı olaylar. 15 sn'de bir `: ping`. |
 
 Sayfa yenilenince `replay=300` ile son oturum animasyonsuz (sessiz) geri yüklenir; 20 sn'den yeni olaylar normal oynar.
@@ -74,6 +94,7 @@ Sayfa yenilenince `replay=300` ile son oturum animasyonsuz (sessiz) geri yüklen
 |---|---|
 | `timestamp`, `hook_event_name`, `session_id`, `tool_name`, `tool_use_id`, `summary` | — |
 | `source` | `SessionStart`'ta: `startup`, `resume`, `clear`, `compact` |
+| `manager` | `true`: olay `office/manager.sh` ile başlatılan Manager oturumundan |
 | `agent_type` | Alt agent içinden gelen olaylarda agent adı (ayrıca `agent` sözlüğü) |
 | `tool_input` | Beyaz listedeki alanlar, 300 karaktere kısaltılmış; dosya içeriği alınmaz |
 | `prompt`, `last_assistant_message` | 500 karaktere kısaltılmış |
@@ -84,7 +105,7 @@ Canlı modda token yalnızca bu alanlardan gelir (tahmin yok); demo modunda örn
 ## Testler
 ```bash
 python3 -m unittest discover -s tests   # sunucu, replay, API, hook token sayımı
-node --test tests/*.test.mjs            # state, A*, demo simülasyonu
+node --test tests/*.test.mjs            # state, A*, demo simülasyonu, masaüstü mantığı
 tests/visual/check.sh                   # sahne piksel karşılaştırması (headless Chrome)
 ```
 Test için: `#freeze` / `#freeze=work` sahneyi sabit tek kare çizer; `?terms=0` terminal iframe'lerini kapatır (testler gerçek tmux oturumlarına bağlanmasın diye).

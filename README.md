@@ -49,8 +49,9 @@ researchLAB/
 │       ├── STATUS.md
 │       ├── code/  results/  literature/  paper/  reviews/
 ├── reports/                   # günlük raporlar + şablon
-├── events/                    # events.jsonl (olay günlüğü), .token_offsets.json
+├── events/                    # events.jsonl (olay günlüğü), .token_offsets.json, .manager_session
 ├── office/                    # canlı pixel ofis arayüzü (bkz. office/README.md)
+├── desktop/                   # macOS masaüstü uygulaması (Electron)
 ├── tests/                     # altyapı testleri (Python, Node, görsel)
 └── docs/DEVELOPMENT.md        # altyapı geliştirme kuralları
 ```
@@ -68,6 +69,32 @@ Her olayda agent kimliği (`agent_type`), kısaltılmış araç girdisi ve alt a
 ```
 
 Agent'ları masalarında çalışırken, Manager'ın iş dağıtmasını ve teslimleri canlı izlersiniz. Demo için `http://localhost:8765/#demo`. Ayrıntılar: [`office/README.md`](office/README.md).
+
+## Masaüstü uygulaması
+
+`desktop/` ofisi ve iki terminali tek pencerede açan bir Electron uygulamasıdır (şimdilik paketlenmez). Gereken: Node.js, `tmux`, `ttyd`, `python3`, `claude`.
+
+```bash
+./desktop/run.sh          # ilk seferde npm install yapar, sonra uygulamayı açar
+./desktop/make-app.sh     # isteğe bağlı: ~/Applications/researchLAB.app (Dock'a sabitlenebilir)
+```
+
+- **Açılış:** Uygulama süreçleri kendisi başlatmaz, `office/office.sh start`'ı çağırır (tek kaynak). Portlar hazır olunca ofisi açar. Sistem zaten çalışıyorsa yeniden başlatmaz, bağlanır.
+  - 20 sn içinde açılmazsa hangi parçanın (sunucu, Terminal 1/2, tmux) başlamadığını log satırlarıyla gösterir.
+  - Port başka bir programdaysa bunu hemen söyler.
+- **İlk açılış:** Repo klasörü sorulur (varsayılan `~/Desktop/researchLAB`) ve saklanır. Daha sonra *researchLAB → Repo klasörünü değiştir…* ile değiştirilir.
+- **PATH:** Finder/Dock'tan açılışta login shell PATH'i ile `/opt/homebrew/bin`, `/usr/local/bin` ve `~/.local/bin` eklenir. `claude`, `tmux`, `ttyd` ya da `python3` yoksa eksik olanı ve kurulum komutunu gösterir.
+- **Manager:** Terminal 1 her zaman repo dizininde `office/manager.sh` ile başlar.
+  - Önceki Manager konuşması varsa `claude --resume <id>` ile ona devam eder, yoksa düz `claude` açılır. `--continue` kullanılmaz, çünkü klasördeki en son konuşma başka bir oturuma ait olabilir.
+  - Manager'dan çıkılırsa Terminal 1 başlığında **Manager kapalı** uyarısı ve **Manager'ı başlat** düğmesi çıkar.
+  - tmux oturumu dışarıdan öldürülse de Terminal 1 yeniden bağlanınca oturum kendiliğinden kurulur.
+- **Kapanış:** Pencereyi kapatmak, Cmd+Q ve menü çubuğundaki *Tamamen kapat* aynı yoldan geçer.
+  - Hiçbir agent çalışmıyorsa sunucu, terminaller ve tmux oturumları kapanır.
+  - Bir agent çalışıyorsa şu seçenekler sorulur: **Durdurup kapat** / **Arka planda çalışsın** / **İptal**. Arka planda seçilirse pencere kapanır, iş tmux'ta sürer. Menü çubuğu ikonundan (*Aç / Durum / Tamamen kapat*) ya da uygulamayı yeniden açarak aynı oturuma dönülür.
+- **Uyku:** Bir görev çalışırken Mac boşta uykuya geçmez (`powerSaveBlocker`); menü çubuğunda "çalışıyor" yazar. Kapak kapatılınca Mac yine uyur.
+- **Dock kısayolu:** `make-app.sh` uygulaması ilk açılışta macOS'tan *Masaüstü klasörüne erişim* izni ister; bir kez onaylanır.
+  - Paketleme olmadığı için çalışan pencere Dock'ta ayrıca "Electron" olarak görünür (Faz 5b'de düzelir).
+  - Dock'tan açılışın çıktısı: `~/Library/Logs/researchLAB.log`.
 
 ## Geliştirme
 
