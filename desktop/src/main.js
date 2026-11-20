@@ -3,7 +3,7 @@
 // Bu dosya açılışı bekler, pencereyi, menü çubuğu ikonunu, kapanış diyaloğunu ve uyku engelini yönetir.
 import { app, BrowserWindow, Menu, Tray, dialog, ipcMain, nativeImage, powerSaveBlocker, screen, shell } from 'electron';
 import { execFile, spawn } from 'node:child_process';
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import net from 'node:net';
 import { userInfo } from 'node:os';
 import { dirname, join } from 'node:path';
@@ -36,18 +36,21 @@ function save(patch) {
 // ---------- ortam: PATH ve dil ----------
 // Finder'dan açılışta PATH kısıtlıdır ve LANG yoktur (tmux UTF-8'i bozar).
 function loginShellEnv() {
+  // Çıktı geçici dosyaya yazılır (pipe değil): rc dosyalarının başlattığı arka plan
+  // süreçleri pipe'ı açık tutabilir. Kabuk 3 sn'de bitmezse öldürülür.
   const sh = process.env.SHELL || userInfo().shell || '/bin/zsh';
+  const file = join(app.getPath('temp'), `researchlab-env-${process.pid}.txt`);
   return new Promise(resolve => {
-    let out = '';
-    const p = spawn(sh, ['-ilc', `printf '${MARK}%s${MARK}' "$PATH"; printf '${MARK}%s${MARK}' "$LANG"`], { stdio: ['ignore', 'pipe', 'ignore'] });
-    const t = setTimeout(() => { p.kill(); resolve({}); }, 3000);
-    p.stdout.on('data', d => { out += d; });
-    p.on('close', () => {
+    const finish = () => {
       clearTimeout(t);
+      let out = ''; try { out = readFileSync(file, 'utf8'); rmSync(file, { force: true }); } catch { /* yok */ }
       const [path = '', lang = ''] = (out.match(new RegExp(`${MARK}.*?${MARK}`, 'gs')) || []).map(parseMarked);
       resolve({ path, lang });
-    });
-    p.on('error', () => { clearTimeout(t); resolve({}); });
+    };
+    const p = spawn(sh, ['-ilc', `printf '${MARK}%s${MARK}${MARK}%s${MARK}' "$PATH" "$LANG" > "$1"`, '_', file], { stdio: 'ignore' });
+    const t = setTimeout(() => { p.kill('SIGKILL'); finish(); }, 3000);
+    p.on('exit', finish);
+    p.on('error', finish);
   });
 }
 async function setupEnv() {
