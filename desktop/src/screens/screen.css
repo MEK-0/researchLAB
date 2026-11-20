@@ -1,0 +1,20 @@
+:root{--bg:#0f1f1c;--panel:#16302b;--ink:#e4eeea;--mute:#93a7a0;--ok:#69db7c;--bad:#ff8787;--accent:#e8590c}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font:15px/1.5 -apple-system,"IBM Plex Sans",sans-serif}
+body{display:grid;place-items:center;padding:24px}
+main{width:min(760px,100%)}
+h1{font:600 22px/1.3 -apple-system,sans-serif;margin:0 0 6px}
+p{margin:0 0 14px;color:var(--mute)}
+.spin{width:14px;height:14px;background:var(--accent);display:inline-block;margin-right:10px;animation:b 1s steps(2) infinite}
+@keyframes b{50%{opacity:.25}}
+ul{list-style:none;padding:0;margin:16px 0}
+li{background:var(--panel);padding:10px 14px;margin-bottom:8px;border-left:4px solid var(--mute)}
+li.ok{border-color:var(--ok)} li.bad{border-color:var(--bad)}
+li b{display:block}
+pre{background:#0b1513;color:#cfe3dc;padding:10px 12px;margin:8px 0 0;overflow:auto;font:12.5px/1.45 ui-monospace,Menlo,monospace;white-space:pre-wrap}
+code{font:13px ui-monospace,Menlo,monospace}
+.row{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
+button{min-height:40px;padding:0 16px;border:2px solid #0b1514;background:var(--ink);color:#0f1f1c;font:600 14px -apple-system,sans-serif;cursor:pointer;box-shadow:3px 3px 0 #0b1514}
+button.sec{background:var(--panel);color:var(--ink)}
+button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+a{color:#9fd6e8}

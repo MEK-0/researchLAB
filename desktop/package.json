@@ -1,0 +1,15 @@
+{
+  "name": "researchlab-desktop",
+  "productName": "researchLAB",
+  "version": "0.1.0",
+  "private": true,
+  "description": "researchLAB masaüstü uygulaması (Electron): ofis + terminaller",
+  "type": "module",
+  "main": "src/main.js",
+  "scripts": {
+    "dev": "electron ."
+  },
+  "devDependencies": {
+    "electron": "45.4.1"
+  }
+}
