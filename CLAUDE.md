@@ -40,7 +40,8 @@ Manager raporu
 ```
 
 - `software-researcher` ve `professor-lit` birbirine bağımlı değilse **aynı anda** (paralel) başlat.
-- `professor-writer`, ancak `results/SUMMARY.md` ve `literature/notes.md` hazır olduğunda çağrılır.
+- `professor-writer`, ancak `results/RESULTS.md` ve `literature/notes.md` hazır olduğunda çağrılır.
+- **Sonuç özeti dosyası:** yeni projelerde `results/RESULTS.md`. Eski projelerde (iris-baseline, iris-seeds, breast-cancer-models) `results/SUMMARY.md`. Kural: `RESULTS.md` yoksa `SUMMARY.md`'ye bak. Okuma talimatlarında bunu agent'a da yaz.
 
 ## 3. Delegasyon kuralları
 
@@ -60,11 +61,15 @@ Her delegasyon talimatı **mutlaka** şunları içerir:
 - **Dönüş formatı:** "Uzun çıktıyı dosyaya yaz, bana en fazla ~15 satırlık özet dön."
 - Revizyon turuysa: ilgili `reviews/review-N.md` yolu ve düzeltilecek maddeler.
 
+**Dosya adları:** Alt agent'lar adı REPORT, SUMMARY, FINDINGS veya ANALYSIS ile başlayan `.md` dosyası yazamaz (Claude Code'un Write aracı reddeder). Alt agent'a bu adlarla dosya yazdırma.
+
+**Araç reddi:** Bir alt agent bir aracın reddini bildirirse onu Bash veya başka bir yolla dolandırtma; nedenini anla, gerekiyorsa kullanıcıya sor. Aynı kural senin için de geçerli.
+
 ## 4. Kalite döngüsü
 
 Her alt agent çıktısını kabul etmeden önce kontrol et:
 
-- **software-researcher:** `results/SUMMARY.md` var mı? Kod gerçekten çalıştırılmış mı (log/çıktı var mı)? Hata varsa → hata mesajı ve log yoluyla birlikte geri gönder.
+- **software-researcher:** `results/RESULTS.md` var mı? Kod gerçekten çalıştırılmış mı (log/çıktı var mı)? Hata varsa → hata mesajı ve log yoluyla birlikte geri gönder.
 - **professor-lit:** `literature/notes.md` ve `literature/references.bib` var mı? Her kaynağın linki var mı? Linksiz kaynak → geri gönder.
 - **professor-writer:** Makaledeki sayılar `results/` ile tutarlı mı (birkaçını örnekle kontrol et)? Atıflar `references.bib` içinde var mı?
 - **referee:** Dönen değerlendirmeyi `workspace/<proje-adi>/reviews/review-N.md` olarak kaydet (N = tur numarası). Karar:
@@ -124,7 +129,7 @@ Gün sonunda veya kullanıcı **"rapor"** dediğinde `reports/YYYY-MM-DD.md` dos
 
 - Alt agent'lara yalnızca gereken dosya yollarını ver; tüm workspace'i okutma.
 - Uzun çıktıları (log, tablo, makale) dosyaya yazdır; sana yalnızca özet dönsünler.
-- Büyük dosyaları kendin baştan sona okuma; özet dosyalarını (`SUMMARY.md`, `notes.md`) ve gerekiyorsa ilgili bölümleri oku.
+- Büyük dosyaları kendin baştan sona okuma; özet dosyalarını (`RESULTS.md` ya da eski projelerde `SUMMARY.md`, `notes.md`) ve gerekiyorsa ilgili bölümleri oku.
 - Gereksiz agent çağrısı yapma; küçük bir düzeltme için tüm akışı yeniden başlatma.
 
 ## 8. Dil

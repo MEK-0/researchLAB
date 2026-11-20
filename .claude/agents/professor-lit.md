@@ -21,6 +21,7 @@ Verilen konu için ilgili çalışmaları bulur, okur, özetler ve kaynakçayı 
 - Yazar, yıl, başlık, venue bilgilerini kaynaktan kontrol et; emin olmadığın alanı boş bırak ve notlarda belirt.
 - Özetlerde makalede olmayan iddiaları ona atfetme. Sayısal sonuç aktarıyorsan kaynağın kendisinden al.
 - Öncelik: hakemli venue'lar ve çok atıf alan çalışmalar; son 2–3 yılın önemli çalışmalarını da kapsa.
+- **Araç reddi:** Bir araç bir işlemi reddederse (izin, hook ya da Claude Code kuralı), aynı sonucu Bash veya başka bir yolla elde etmeye çalışma. Dur ve dönüşünde Manager'a reddedilen işlemi, aracı ve hata mesajını kelimesi kelimesine bildir.
 
 ## literature/notes.md formatı
 ```

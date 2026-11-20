@@ -19,7 +19,7 @@ export const DEMO_EVENTS = [
   [2200, { hook_event_name: 'PostToolUse', agent_type: 'software-researcher', tool_name: 'Bash', summary: 'CV 0.9583 ± 0.0264 · test 0.9333' }, 1900],
   [1300, { hook_event_name: 'PreToolUse', agent_type: 'professor-lit', tool_name: 'Write', tool_input: { file_path: 'literature/references.bib' } }, 1500],
   [1600, { hook_event_name: 'SubagentStop', agent_type: 'professor-lit', last_assistant_message: '3 kaynak hazır: Fisher 1936, UCI Iris, scikit-learn. Hepsinin linki var.' }, 700],
-  [1500, { hook_event_name: 'PreToolUse', agent_type: 'software-researcher', tool_name: 'Write', tool_input: { file_path: 'results/SUMMARY.md' } }, 1600],
+  [1500, { hook_event_name: 'PreToolUse', agent_type: 'software-researcher', tool_name: 'Write', tool_input: { file_path: 'results/RESULTS.md' } }, 1600],
   [1800, { hook_event_name: 'SubagentStop', agent_type: 'software-researcher', last_assistant_message: 'Kod çalıştı. CV 0.9583 ± 0.0264, test doğruluğu 0.9333 (28/30).' }, 800],
   [3000, { hook_event_name: 'PreToolUse', tool_name: 'Write', tool_input: { file_path: 'agent_logs/002-software-researcher.md' } }, 900],
   [1300, { hook_event_name: 'PreToolUse', tool_name: 'Agent', tool_input: { subagent_type: 'professor-writer', description: 'Sonuçlar ve literatürden 2 sayfalık mini makale' } }, 1300],

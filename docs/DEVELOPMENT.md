@@ -36,3 +36,6 @@ Her değişiklikten sonra mevcut özellikler test edilir:
 ## Commit
 - Commit mesajları Türkçe ve `Faz N: ...` ile başlar.
 - Her alt adım ayrı commit. Push, faz sonunda testler geçtikten sonra yapılır.
+
+## Alt agent dosya adları
+Claude Code'un Write aracı, alt agent'ların adı `REPORT`, `SUMMARY`, `FINDINGS` veya `ANALYSIS` ile başlayan `.md` dosyası yazmasını reddeder (büyük-küçük harf fark etmez; ana oturum etkilenmez; belgelenmemiş yerleşik kural, 2.1.328'de doğrulandı). Bu yüzden sonuç özeti `results/RESULTS.md`'dir. Faz 2, Faz 3 ve sonrasında alt agent'ların ya da skill'lerin yazacağı yeni `.md` dosyalarına bu önekleri verme. Bir araç reddi Bash vb. ile dolanılmaz; agent durumu Manager'a bildirir.
